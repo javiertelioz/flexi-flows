@@ -28,7 +28,7 @@ func (wm *WorkflowManager) AddEdge(edge *Edge) {
 	wm.graph.Edges = append(wm.graph.Edges, edge)
 }
 
-func (wm *WorkflowManager) Execute(startNodeID string) error {
+func (wm *WorkflowManager) Execute(startNodeID string, initialData interface{}) error {
 	wm.mu.Lock()
 	defer wm.mu.Unlock()
 
@@ -37,30 +37,18 @@ func (wm *WorkflowManager) Execute(startNodeID string) error {
 		return errors.New("start node not found")
 	}
 
-	return wm.executeNode(startNode)
+	_, err := wm.executeNode(startNode, initialData)
+	return err
 }
 
-func (wm *WorkflowManager) executeNode(node NodeInterface) error {
+func (wm *WorkflowManager) executeNode(node NodeInterface, data interface{}) (interface{}, error) {
 	if node == nil {
-		return errors.New("node is nil")
+		return nil, errors.New("node is nil")
 	}
 
-	switch node.GetType() {
-	case Task:
-		n := node.(*Node)
-		if err := n.Execute(wm); err != nil {
-			return err
-		}
-	case SubDag:
-		n := node.(*Node)
-		return wm.executeSubDag(n)
-	case Conditional:
-		n := node.(*Node)
-		return wm.executeConditional(n)
-	case Foreach, Branch:
-		if err := node.Execute(wm); err != nil {
-			return err
-		}
+	result, err := node.Execute(wm, data)
+	if err != nil {
+		return nil, err
 	}
 
 	for _, edge := range wm.graph.Edges {
@@ -69,14 +57,12 @@ func (wm *WorkflowManager) executeNode(node NodeInterface) error {
 				continue
 			}
 			if edge.Condition == nil || edge.Condition() {
-				if err := wm.executeNode(edge.To); err != nil {
-					return err
-				}
+				return wm.executeNode(edge.To, result)
 			}
 		}
 	}
 
-	return nil
+	return result, nil
 }
 
 func (wm *WorkflowManager) findNodeByID(id string) NodeInterface {
@@ -88,21 +74,24 @@ func (wm *WorkflowManager) findNodeByID(id string) NodeInterface {
 	return nil
 }
 
-func (wm *WorkflowManager) executeSubDag(node *Node) error {
+func (wm *WorkflowManager) executeSubDag(node *Node, data interface{}) (interface{}, error) {
 	subDag := node.SubDag
+	var result interface{}
+	var err error
 	for _, subNode := range subDag.Nodes {
-		if err := wm.executeNode(subNode); err != nil {
-			return err
+		result, err = wm.executeNode(subNode, data)
+		if err != nil {
+			return nil, err
 		}
 	}
-	return nil
+	return result, nil
 }
 
-func (wm *WorkflowManager) executeConditional(node *Node) error {
+func (wm *WorkflowManager) executeConditional(node *Node, data interface{}) (interface{}, error) {
 	for _, edge := range wm.graph.Edges {
 		if edge.From.GetID() == node.GetID() && edge.Condition() {
-			return wm.executeNode(edge.To)
+			return wm.executeNode(edge.To, data)
 		}
 	}
-	return nil
+	return nil, nil
 }

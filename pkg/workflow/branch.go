@@ -1,34 +1,22 @@
 package workflow
 
-import (
-	"fmt"
-)
+import "fmt"
 
 type BranchNode struct {
-	ID       string
-	Type     NodeType
+	Node
 	Branches []NodeInterface
-	Next     []NodeInterface
 }
 
-func (b *BranchNode) Execute(wm *WorkflowManager) error {
+func (b *BranchNode) Execute(wm *WorkflowManager, data interface{}) (interface{}, error) {
 	fmt.Printf("Executing BranchNode: %s\n", b.ID)
 	for _, branch := range b.Branches {
 		fmt.Printf("Executing branch with ID: %s\n", branch.GetID())
-		if err := wm.executeNode(branch); err != nil {
-			return err
+		if _, err := wm.executeNode(branch, data); err != nil {
+			return nil, err
 		}
 	}
 	if len(b.Next) > 0 {
-		return wm.executeNode(b.Next[0])
+		return wm.executeNode(b.Next[0], data)
 	}
-	return nil
-}
-
-func (n *BranchNode) GetID() string {
-	return n.ID
-}
-
-func (n *BranchNode) GetType() NodeType {
-	return n.Type
+	return nil, nil
 }

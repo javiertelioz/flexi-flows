@@ -1,29 +1,20 @@
 package workflow
 
 type ForeachNode struct {
-	ID          string
-	Type        NodeType
+	Node
 	Collection  []interface{}
-	IterateFunc func(interface{}) error
-	Next        []NodeInterface
+	IterateFunc func(interface{}) (interface{}, error)
 }
 
-func (n *ForeachNode) Execute(wm *WorkflowManager) error {
+func (n *ForeachNode) Execute(wm *WorkflowManager, data interface{}) (interface{}, error) {
 	for _, item := range n.Collection {
-		if err := n.IterateFunc(item); err != nil {
-			return err
+		_, err := n.IterateFunc(item)
+		if err != nil {
+			return nil, err
 		}
 	}
 	if len(n.Next) > 0 {
-		return wm.executeNode(n.Next[0])
+		return wm.executeNode(n.Next[0], data)
 	}
-	return nil
-}
-
-func (n *ForeachNode) GetID() string {
-	return n.ID
-}
-
-func (n *ForeachNode) GetType() NodeType {
-	return n.Type
+	return nil, nil
 }

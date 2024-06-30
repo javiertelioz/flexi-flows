@@ -1,3 +1,4 @@
+// main.go
 package main
 
 import (
@@ -15,18 +16,24 @@ func main() {
 	subTaskNode1 := &workflow.Node{
 		ID:   "subtask1",
 		Type: workflow.Task,
-		TaskFunc: func() error {
+		TaskFunc: func(data interface{}) (interface{}, error) {
 			fmt.Println("Executing SubTask 1")
-			return nil
+			return "result from subtask 1", nil
+		},
+		BeforeExecute: func() {
+			fmt.Println("Starting SubTask 1")
+		},
+		AfterExecute: func() {
+			fmt.Println("Finished SubTask 1")
 		},
 	}
 
 	subTaskNode2 := &workflow.Node{
 		ID:   "subtask2",
 		Type: workflow.Task,
-		TaskFunc: func() error {
-			fmt.Println("Executing SubTask 2")
-			return nil
+		TaskFunc: func(data interface{}) (interface{}, error) {
+			fmt.Println("Executing SubTask 2 with data:", data)
+			return nil, nil
 		},
 	}
 
@@ -52,35 +59,58 @@ func main() {
 	taskNode1 := &workflow.Node{
 		ID:   "task1",
 		Type: workflow.Task,
-		TaskFunc: func() error {
+		TaskFunc: func(data interface{}) (interface{}, error) {
 			fmt.Println("Executing Task 1")
-			return nil
+			return "result from task 1", nil
+		},
+		AfterExecute: func() {
+			fmt.Println("Finished Task 1")
 		},
 	}
 
 	taskNode2 := &workflow.Node{
 		ID:   "task2",
 		Type: workflow.Task,
-		TaskFunc: func() error {
-			fmt.Println("Executing Task 2")
-			return nil
+		TaskFunc: func(data interface{}) (interface{}, error) {
+			fmt.Println("Executing Task 2 with data:", data)
+			return nil, nil
+		},
+		BeforeExecute: func() {
+			fmt.Println("Starting task 2")
 		},
 	}
 
 	foreachNode := &workflow.ForeachNode{
-		ID:         "foreach1",
-		Type:       workflow.Foreach,
+		Node: workflow.Node{
+			ID:   "foreach1",
+			Type: workflow.Foreach,
+		},
 		Collection: []interface{}{1, 2, 3},
-		IterateFunc: func(item interface{}) error {
+		IterateFunc: func(item interface{}) (interface{}, error) {
 			fmt.Printf("Processing item: %v\n", item)
-			return nil
+			return nil, nil
 		},
 	}
 
 	branchNode := &workflow.BranchNode{
-		ID:       "branch1",
-		Type:     workflow.Branch,
+		Node: workflow.Node{
+			ID:   "branch1",
+			Type: workflow.Branch,
+		},
 		Branches: []workflow.NodeInterface{foreachNode},
+	}
+
+	conditionalNode := &workflow.ConditionalNode{
+		Node: workflow.Node{
+			ID:   "conditional1",
+			Type: workflow.Conditional,
+		},
+		Condition: func(data interface{}) bool {
+			result, ok := data.(string)
+			return ok && result == "result from task 1"
+		},
+		TrueNext:  subDagNode,
+		FalseNext: taskNode2,
 	}
 
 	wm.AddNode(taskNode1)
@@ -88,13 +118,14 @@ func main() {
 	wm.AddNode(foreachNode)
 	wm.AddNode(branchNode)
 	wm.AddNode(subDagNode)
+	wm.AddNode(conditionalNode)
 
 	wm.AddEdge(&workflow.Edge{
 		From: taskNode1,
-		To:   branchNode,
+		To:   conditionalNode,
 	})
 	wm.AddEdge(&workflow.Edge{
-		From: branchNode,
+		From: conditionalNode,
 		To:   foreachNode,
 	})
 	wm.AddEdge(&workflow.Edge{
@@ -105,12 +136,8 @@ func main() {
 		From: subDagNode,
 		To:   taskNode2,
 	})
-	wm.AddEdge(&workflow.Edge{
-		From: taskNode2,
-		To:   nil,
-	})
 
-	err := wm.Execute("task1")
+	err := wm.Execute("task1", nil)
 	if err != nil {
 		log.Fatalf("Workflow execution failed: %v", err)
 	}
