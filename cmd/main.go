@@ -3,13 +3,83 @@ package main
 
 import (
 	"fmt"
-	"log"
-
 	"github.com/javiertelioz/workflows/pkg/workflow"
+	"log"
+	"math"
 )
 
 func main() {
-	// Crear una instancia de WorkflowManager
+	wm := workflow.NewWorkflowManager()
+
+	// Nodo para verificar si un número es primo
+	isPrimeNode := &workflow.Node{
+		ID:   "isPrime",
+		Type: workflow.Task,
+		TaskFunc: func(data interface{}) (interface{}, error) {
+			num := data.(int)
+			if num <= 1 {
+				return false, nil
+			}
+			for i := 2; i <= int(math.Sqrt(float64(num))); i++ {
+				if num%i == 0 {
+					return false, nil
+				}
+			}
+			return true, nil
+		},
+	}
+
+	// Nodo para multiplicar un número por sí mismo
+	squareNode := &workflow.Node{
+		ID:   "square",
+		Type: workflow.Task,
+		TaskFunc: func(data interface{}) (interface{}, error) {
+			num := data.(int)
+			return num * num, nil
+		},
+	}
+
+	// Nodo paralelo para ejecutar las dos tareas anteriores simultáneamente
+	parallelNode := &workflow.ParallelNode{
+		Node: workflow.Node{
+			ID:   "parallel",
+			Type: workflow.Branch,
+		},
+		ParallelTasks: []workflow.NodeInterface{isPrimeNode, squareNode},
+	}
+
+	// Nodo para sumar los resultados
+	sumNode := &workflow.Node{
+		ID:   "sum",
+		Type: workflow.Task,
+		TaskFunc: func(data interface{}) (interface{}, error) {
+			results := data.([]interface{})
+			isPrime := results[0].(bool)
+			square := results[1].(int)
+			sum := square
+			if isPrime {
+				sum += 1
+			}
+			fmt.Printf("Sum of results: %d (Prime: %v, Square: %d)\n", sum, isPrime, square)
+			return sum, nil
+		},
+	}
+
+	wm.AddNode(isPrimeNode)
+	wm.AddNode(squareNode)
+	wm.AddNode(parallelNode)
+	wm.AddNode(sumNode)
+
+	wm.AddEdge(&workflow.Edge{
+		From: parallelNode,
+		To:   sumNode,
+	})
+
+	err := wm.Execute("parallel", 5)
+	if err != nil {
+		log.Fatalf("Workflow execution failed: %v", err)
+	}
+	/*// Crear una instancia de WorkflowManager
 	wm := workflow.NewWorkflowManager()
 
 	// Crear nodos para el sub-dag
@@ -140,5 +210,5 @@ func main() {
 	err := wm.Execute("task1", nil)
 	if err != nil {
 		log.Fatalf("Workflow execution failed: %v", err)
-	}
+	}*/
 }
