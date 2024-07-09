@@ -9,8 +9,11 @@ import (
 )
 
 func main() {
-	// Crear una instancia de WorkflowManager
-	wm := workflow.NewWorkflowManager()
+	// Crear una instancia de StateStore
+	// stateStore := workflow.NewJSONStateStore("flow.json")
+
+	// Crear una instancia de WorkflowManager con StateStore
+	wm := workflow.NewWorkflowManager(nil)
 
 	// Nodo para verificar si un número es primo
 	isPrimeNode := &workflow.Node{

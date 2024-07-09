@@ -6,13 +6,15 @@ import (
 )
 
 type WorkflowManager struct {
-	graph *Graph
-	mu    sync.Mutex
+	graph      *Graph
+	stateStore StateStore
+	mu         sync.Mutex
 }
 
-func NewWorkflowManager() *WorkflowManager {
+func NewWorkflowManager(stateStore StateStore) *WorkflowManager {
 	return &WorkflowManager{
-		graph: &Graph{},
+		graph:      &Graph{},
+		stateStore: stateStore,
 	}
 }
 
@@ -46,9 +48,28 @@ func (wm *WorkflowManager) executeNode(node NodeInterface, data interface{}) (in
 		return nil, errors.New("node is nil")
 	}
 
+	// Cargar el estado antes de la ejecución solo si stateStore no es nil
+	if wm.stateStore != nil {
+		state, err := wm.stateStore.LoadState(node.GetID())
+		if err != nil {
+			return nil, err
+		}
+		if state != nil {
+			data = state
+		}
+	}
+
 	result, err := node.Execute(wm, data)
 	if err != nil {
 		return nil, err
+	}
+
+	// Guardar el estado después de la ejecución solo si stateStore no es nil
+	if wm.stateStore != nil {
+		err = wm.stateStore.SaveState(node.GetID(), result)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	for _, edge := range wm.graph.Edges {
