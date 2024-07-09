@@ -37,6 +37,9 @@ func main() {
 			num := data.(int)
 			return num * num, nil
 		},
+		BeforeExecute: func() {
+			fmt.Println("Starting square task 1")
+		},
 	}
 
 	// Nodo paralelo para ejecutar las dos tareas anteriores simultáneamente
