@@ -1,4 +1,3 @@
-// workflow/node.go
 package workflow
 
 type NodeType int
