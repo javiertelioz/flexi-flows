@@ -9,6 +9,7 @@ import (
 )
 
 func main() {
+	// Crear una instancia de WorkflowManager
 	wm := workflow.NewWorkflowManager()
 
 	// Nodo para verificar si un número es primo
@@ -27,6 +28,14 @@ func main() {
 			}
 			return true, nil
 		},
+		BeforeExecute: func(data interface{}) (interface{}, error) {
+			fmt.Println("Before isPrime: received data", data)
+			return data, nil
+		},
+		AfterExecute: func(result interface{}) (interface{}, error) {
+			fmt.Println("After isPrime: result is", result)
+			return result, nil
+		},
 	}
 
 	// Nodo para multiplicar un número por sí mismo
@@ -37,8 +46,13 @@ func main() {
 			num := data.(int)
 			return num * num, nil
 		},
-		BeforeExecute: func() {
-			fmt.Println("Starting square task 1")
+		BeforeExecute: func(data interface{}) (interface{}, error) {
+			fmt.Println("Before square: received data", data)
+			return data, nil
+		},
+		AfterExecute: func(result interface{}) (interface{}, error) {
+			fmt.Println("After square: result is", result)
+			return result, nil
 		},
 	}
 
@@ -65,6 +79,14 @@ func main() {
 			}
 			fmt.Printf("Sum of results: %d (Prime: %v, Square: %d)\n", sum, isPrime, square)
 			return sum, nil
+		},
+		BeforeExecute: func(data interface{}) (interface{}, error) {
+			fmt.Println("Before sum: received data", data)
+			return data, nil
+		},
+		AfterExecute: func(result interface{}) (interface{}, error) {
+			fmt.Println("After sum: result is", result)
+			return result, nil
 		},
 	}
 

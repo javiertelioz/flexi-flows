@@ -1,3 +1,4 @@
+// workflow/node.go
 package workflow
 
 type NodeType int
@@ -22,8 +23,8 @@ type Node struct {
 	TaskFunc      func(interface{}) (interface{}, error)
 	SubDag        *Graph
 	Next          []NodeInterface
-	BeforeExecute func()
-	AfterExecute  func()
+	BeforeExecute func(interface{}) (interface{}, error)
+	AfterExecute  func(interface{}) (interface{}, error)
 }
 
 func (n *Node) GetID() string {
@@ -35,12 +36,16 @@ func (n *Node) GetType() NodeType {
 }
 
 func (n *Node) Execute(wm *WorkflowManager, data interface{}) (interface{}, error) {
+	var err error
+
 	if n.BeforeExecute != nil {
-		n.BeforeExecute()
+		data, err = n.BeforeExecute(data)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	var result interface{}
-	var err error
 	if n.TaskFunc != nil {
 		result, err = n.TaskFunc(data)
 		if err != nil {
@@ -49,7 +54,10 @@ func (n *Node) Execute(wm *WorkflowManager, data interface{}) (interface{}, erro
 	}
 
 	if n.AfterExecute != nil {
-		n.AfterExecute()
+		result, err = n.AfterExecute(result)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return result, nil
