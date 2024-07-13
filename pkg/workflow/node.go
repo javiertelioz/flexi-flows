@@ -16,37 +16,38 @@ type NodeInterface interface {
 	Execute(wm *WorkflowManager, data interface{}) (interface{}, error)
 }
 
-type Node struct {
+type Node[T any] struct {
 	ID            string
 	Type          NodeType
-	TaskFunc      func(interface{}) (interface{}, error)
+	TaskFunc      func(T) (T, error)
 	SubDag        *Graph
 	Next          []NodeInterface
-	BeforeExecute func(interface{}) (interface{}, error)
-	AfterExecute  func(interface{}) (interface{}, error)
+	BeforeExecute func(T) (T, error)
+	AfterExecute  func(T) (T, error)
 }
 
-func (n *Node) GetID() string {
+func (n *Node[T]) GetID() string {
 	return n.ID
 }
 
-func (n *Node) GetType() NodeType {
+func (n *Node[T]) GetType() NodeType {
 	return n.Type
 }
 
-func (n *Node) Execute(wm *WorkflowManager, data interface{}) (interface{}, error) {
+func (n *Node[T]) Execute(wm *WorkflowManager, data interface{}) (interface{}, error) {
 	var err error
+	typedData := data.(T)
 
 	if n.BeforeExecute != nil {
-		data, err = n.BeforeExecute(data)
+		typedData, err = n.BeforeExecute(typedData)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	var result interface{}
+	var result T
 	if n.TaskFunc != nil {
-		result, err = n.TaskFunc(data)
+		result, err = n.TaskFunc(typedData)
 		if err != nil {
 			return nil, err
 		}

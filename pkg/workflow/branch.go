@@ -3,7 +3,7 @@ package workflow
 import "fmt"
 
 type BranchNode struct {
-	Node
+	Node[interface{}]
 	Branches []NodeInterface
 }
 

@@ -5,7 +5,7 @@ import (
 )
 
 type ParallelNode struct {
-	Node
+	Node[interface{}]
 	ParallelTasks []NodeInterface
 }
 

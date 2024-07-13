@@ -3,34 +3,32 @@ package main
 
 import (
 	"fmt"
-	"github.com/javiertelioz/workflows/pkg/workflow"
-	"github.com/javiertelioz/workflows/pkg/workflow/config"
 	"log"
 	"math"
+
+	"github.com/javiertelioz/workflows/pkg/workflow"
+	"github.com/javiertelioz/workflows/pkg/workflow/config"
 )
 
-func isPrimeFunc(data interface{}) (interface{}, error) {
-	num := data.(int)
-	if num <= 1 {
+func isPrimeFunc(data int) (bool, error) {
+	if data <= 1 {
 		return false, nil
 	}
-	for i := 2; i <= int(math.Sqrt(float64(num))); i++ {
-		if num%i == 0 {
+	for i := 2; i <= int(math.Sqrt(float64(data))); i++ {
+		if data%i == 0 {
 			return false, nil
 		}
 	}
 	return true, nil
 }
 
-func squareFunc(data interface{}) (interface{}, error) {
-	num := data.(int)
-	return num * num, nil
+func squareFunc(data int) (int, error) {
+	return data * data, nil
 }
 
-func sumFunc(data interface{}) (interface{}, error) {
-	results := data.([]interface{})
-	isPrime := results[0].(bool)
-	square := results[1].(int)
+func sumFunc(data []interface{}) (int, error) {
+	isPrime := data[0].(bool)
+	square := data[1].(int)
 	sum := square
 	if isPrime {
 		sum += 1
@@ -39,32 +37,32 @@ func sumFunc(data interface{}) (interface{}, error) {
 	return sum, nil
 }
 
-func beforeIsPrime(data interface{}) (interface{}, error) {
+func beforeIsPrime(data int) (int, error) {
 	fmt.Println("Before isPrime: received data", data)
 	return data, nil
 }
 
-func afterIsPrime(result interface{}) (interface{}, error) {
+func afterIsPrime(result bool) (bool, error) {
 	fmt.Println("After isPrime: result is", result)
 	return result, nil
 }
 
-func beforeSquare(data interface{}) (interface{}, error) {
+func beforeSquare(data int) (int, error) {
 	fmt.Println("Before square: received data", data)
 	return data, nil
 }
 
-func afterSquare(result interface{}) (interface{}, error) {
+func afterSquare(result int) (int, error) {
 	fmt.Println("After square: result is", result)
 	return result, nil
 }
 
-func beforeSum(data interface{}) (interface{}, error) {
+func beforeSum(data []interface{}) ([]interface{}, error) {
 	fmt.Println("Before sum: received data", data)
 	return data, nil
 }
 
-func afterSum(result interface{}) (interface{}, error) {
+func afterSum(result int) (int, error) {
 	fmt.Println("After sum: result is", result)
 	return result, nil
 }
