@@ -4,18 +4,113 @@ package main
 import (
 	"fmt"
 	"github.com/javiertelioz/workflows/pkg/workflow"
+	"github.com/javiertelioz/workflows/pkg/workflow/config"
 	"log"
 	"math"
 )
 
+func isPrimeFunc(data interface{}) (interface{}, error) {
+	num := data.(int)
+	if num <= 1 {
+		return false, nil
+	}
+	for i := 2; i <= int(math.Sqrt(float64(num))); i++ {
+		if num%i == 0 {
+			return false, nil
+		}
+	}
+	return true, nil
+}
+
+func squareFunc(data interface{}) (interface{}, error) {
+	num := data.(int)
+	return num * num, nil
+}
+
+func sumFunc(data interface{}) (interface{}, error) {
+	results := data.([]interface{})
+	isPrime := results[0].(bool)
+	square := results[1].(int)
+	sum := square
+	if isPrime {
+		sum += 1
+	}
+	fmt.Printf("Sum of results: %d (Prime: %v, Square: %d)\n", sum, isPrime, square)
+	return sum, nil
+}
+
+func beforeIsPrime(data interface{}) (interface{}, error) {
+	fmt.Println("Before isPrime: received data", data)
+	return data, nil
+}
+
+func afterIsPrime(result interface{}) (interface{}, error) {
+	fmt.Println("After isPrime: result is", result)
+	return result, nil
+}
+
+func beforeSquare(data interface{}) (interface{}, error) {
+	fmt.Println("Before square: received data", data)
+	return data, nil
+}
+
+func afterSquare(result interface{}) (interface{}, error) {
+	fmt.Println("After square: result is", result)
+	return result, nil
+}
+
+func beforeSum(data interface{}) (interface{}, error) {
+	fmt.Println("Before sum: received data", data)
+	return data, nil
+}
+
+func afterSum(result interface{}) (interface{}, error) {
+	fmt.Println("After sum: result is", result)
+	return result, nil
+}
+
 func main() {
-	// Crear una instancia de StateStore
+	// Crear una instancia de StateStore (opcional)
 	// stateStore := workflow.NewJSONStateStore("flow.json")
 
 	// Crear una instancia de WorkflowManager con StateStore
-	wm := workflow.NewWorkflowManager(nil)
+	//wm := workflow.NewWorkflowManager(nil)
 
-	// Nodo para verificar si un número es primo
+	// Crear una instancia de WorkflowManager con las funciones de tareas y hooks
+	taskFuncs := map[string]interface{}{
+		"isPrimeFunc": isPrimeFunc,
+		"squareFunc":  squareFunc,
+		"sumFunc":     sumFunc,
+	}
+	hookFuncs := map[string]interface{}{
+		"beforeIsPrime": beforeIsPrime,
+		"afterIsPrime":  afterIsPrime,
+		"beforeSquare":  beforeSquare,
+		"afterSquare":   afterSquare,
+		"beforeSum":     beforeSum,
+		"afterSum":      afterSum,
+	}
+	wm := workflow.NewWorkflowManager(nil, taskFuncs, hookFuncs)
+
+	// Cargar la configuración del flujo de trabajo desde un archivo JSON
+	config, err := config.LoadConfig("./config/workflow.json")
+	if err != nil {
+		log.Fatalf("Failed to load workflow configuration: %v", err)
+	}
+
+	// Crear nodos y edges basados en la configuración
+	err = wm.LoadFromConfig(config)
+	if err != nil {
+		log.Fatalf("Failed to load workflow from configuration: %v", err)
+	}
+
+	// Ejecutar el flujo de trabajo
+	err = wm.Execute("parallel", 5)
+	if err != nil {
+		log.Fatalf("Workflow execution failed: %v", err)
+	}
+
+	/*// Nodo para verificar si un número es primo
 	isPrimeNode := &workflow.Node{
 		ID:   "isPrime",
 		Type: workflow.Task,
@@ -106,7 +201,7 @@ func main() {
 	err := wm.Execute("parallel", 5)
 	if err != nil {
 		log.Fatalf("Workflow execution failed: %v", err)
-	}
+	}*/
 	/*// Crear una instancia de WorkflowManager
 	wm := workflow.NewWorkflowManager()
 
