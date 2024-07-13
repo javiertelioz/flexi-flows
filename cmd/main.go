@@ -1,7 +1,7 @@
-// main.go
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"math"
@@ -10,6 +10,14 @@ import (
 	"github.com/javiertelioz/workflows/pkg/workflow/config"
 )
 
+// isPrimeFunc
+// @type: task
+// @description checks if a given integer is a prime number.
+//
+// @input data (int): The integer to be checked for primality.
+//
+// @output bool: Returns true if the input integer is a prime number, false otherwise.
+// @output error: Returns an error if the input integer is less than 1.
 func isPrimeFunc(data int) (bool, error) {
 	if data <= 1 {
 		return false, nil
@@ -20,6 +28,34 @@ func isPrimeFunc(data int) (bool, error) {
 		}
 	}
 	return true, nil
+}
+
+// beforeIsPrime
+// @type: pre-hook
+// @before isPrimeFunc
+// @description execute before isPrimeFunc.
+//
+// @input data (int): The integer to be checked for primality.
+//
+// @output int: Returns integer is a prime number.
+// @output error: Returns an error if occurs.
+func beforeIsPrime(data int) (int, error) {
+	fmt.Println("Before isPrime: received data", data)
+	return data, nil
+}
+
+// afterIsPrime
+// @type: post-hook
+// @after isPrimeFunc
+// @description execute after isPrimeFunc.
+//
+// @input result (bool): The result of the isPrimeFunc.
+//
+// @output bool: Returns the result after post-processing.
+// @output error: Returns an error if occurs.
+func afterIsPrime(result bool) (bool, error) {
+	fmt.Println("After isPrime: result is", result)
+	return result, nil
 }
 
 func squareFunc(data int) (int, error) {
@@ -35,16 +71,6 @@ func sumFunc(data []interface{}) (int, error) {
 	}
 	fmt.Printf("Sum of results: %d (Prime: %v, Square: %d)\n", sum, isPrime, square)
 	return sum, nil
-}
-
-func beforeIsPrime(data int) (int, error) {
-	fmt.Println("Before isPrime: received data", data)
-	return data, nil
-}
-
-func afterIsPrime(result bool) (bool, error) {
-	fmt.Println("After isPrime: result is", result)
-	return result, nil
 }
 
 func beforeSquare(data int) (int, error) {
@@ -91,7 +117,7 @@ func main() {
 	wm := workflow.NewWorkflowManager(nil, taskFuncs, hookFuncs)
 
 	// Cargar la configuración del flujo de trabajo desde un archivo JSON
-	config, err := config.LoadConfig("./config/workflow.json")
+	config, err := config.LoadConfig("config/workflow.json")
 	if err != nil {
 		log.Fatalf("Failed to load workflow configuration: %v", err)
 	}
@@ -107,6 +133,20 @@ func main() {
 	if err != nil {
 		log.Fatalf("Workflow execution failed: %v", err)
 	}
+
+	// Obtener la metadata de las funciones
+	src := "./cmd/main.go"
+	metadata, err := workflow.ParseComments(src)
+	if err != nil {
+		log.Fatalf("Failed to parse comments: %v", err)
+	}
+
+	metadataJSON, err := json.MarshalIndent(metadata, "", "  ")
+	if err != nil {
+		log.Fatalf("Failed to marshal metadata to JSON: %v", err)
+	}
+
+	fmt.Printf("Function metadata:\n%s\n", metadataJSON)
 
 	/*// Nodo para verificar si un número es primo
 	isPrimeNode := &workflow.Node{
