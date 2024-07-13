@@ -1,7 +1,7 @@
 package workflow
 
 type ConditionalNode struct {
-	Node[any]
+	Node[interface{}]
 	Condition func(data interface{}) bool
 	TrueNext  NodeInterface
 	FalseNext NodeInterface

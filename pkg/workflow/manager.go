@@ -2,9 +2,10 @@ package workflow
 
 import (
 	"errors"
-	"github.com/javiertelioz/workflows/pkg/workflow/config"
 	"reflect"
 	"sync"
+
+	"github.com/javiertelioz/workflows/pkg/workflow/config"
 )
 
 type WorkflowManager struct {
