@@ -50,6 +50,10 @@ func (wm *WorkflowManager) Execute(startNodeID string, initialData interface{}) 
 	return err
 }
 
+func (wm *WorkflowManager) ExecuteNode(node NodeInterface, data interface{}) (interface{}, error) {
+	return wm.executeNode(node, data)
+}
+
 func (wm *WorkflowManager) executeNode(node NodeInterface, data interface{}) (interface{}, error) {
 	if node == nil {
 		return nil, errors.New("node is nil")
