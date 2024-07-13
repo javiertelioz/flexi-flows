@@ -4,6 +4,8 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 )
@@ -33,29 +35,65 @@ type HookMetadata struct {
 	Returns     []ReturnMetadata    `json:"returns"`
 }
 
-func ParseComments(src string) (map[string]FunctionMetadata, error) {
-	fset := token.NewFileSet()
-	node, err := parser.ParseFile(fset, src, nil, parser.ParseComments)
+func ParseComments(dir string) (map[string]FunctionMetadata, error) {
+	metadata := make(map[string]FunctionMetadata)
+	hookMetadata := make(map[string]HookMetadata)
+
+	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if !info.IsDir() && strings.HasSuffix(path, ".go") {
+			err = parseFile(path, metadata, hookMetadata)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+
 	if err != nil {
 		return nil, err
 	}
 
-	functions := make(map[string]*FunctionMetadata)
-	hooks := make(map[string]*HookMetadata)
+	// Associate hooks with their corresponding tasks
+	for fnName, fnMeta := range metadata {
+		fnMeta.Hooks = make(map[string]HookMetadata)
+		for name, hook := range hookMetadata {
+			if strings.HasPrefix(name, fnName) {
+				fnMeta.Hooks[name] = hook
+			}
+		}
+	}
 
-	// Parse all comments and capture metadata
+	return metadata, nil
+}
+
+func parseFile(path string, metadata map[string]FunctionMetadata, hookMetadata map[string]HookMetadata) error {
+	fset := token.NewFileSet()
+	node, err := parser.ParseFile(fset, path, nil, parser.ParseComments)
+	if err != nil {
+		return err
+	}
+
 	for _, f := range node.Decls {
 		if fn, isFn := f.(*ast.FuncDecl); isFn {
 			if fn.Doc != nil {
-				fnName := fn.Name.Name
-				meta := &FunctionMetadata{}
+				meta := FunctionMetadata{}
 				for _, comment := range fn.Doc.List {
-					parseComment(comment.Text, meta, hooks, fnName)
+					parseComment(comment.Text, &meta, hookMetadata, fn.Name.Name)
 				}
 				if meta.Type == "task" {
-					functions[fnName] = meta
+					meta.Hooks = make(map[string]HookMetadata)
+					for name, hook := range hookMetadata {
+						if strings.HasPrefix(name, fn.Name.Name) {
+							meta.Hooks[name] = hook
+						}
+					}
+					metadata[fn.Name.Name] = meta
 				} else if meta.Type == "pre-hook" || meta.Type == "post-hook" {
-					hooks[fnName] = &HookMetadata{
+					hookMetadata[meta.Type+"_"+fn.Name.Name] = HookMetadata{
 						Type:        meta.Type,
 						Description: meta.Description,
 						Parameters:  meta.Parameters,
@@ -66,25 +104,10 @@ func ParseComments(src string) (map[string]FunctionMetadata, error) {
 		}
 	}
 
-	// Associate hooks with their corresponding tasks
-	for fnName, fnMeta := range functions {
-		fnMeta.Hooks = make(map[string]HookMetadata)
-		for hookName, hookMeta := range hooks {
-			if strings.Contains(hookName, fnName) {
-				fnMeta.Hooks[hookMeta.Type+"_"+hookName] = *hookMeta
-			}
-		}
-	}
-
-	result := make(map[string]FunctionMetadata)
-	for fnName, fnMeta := range functions {
-		result[fnName] = *fnMeta
-	}
-
-	return result, nil
+	return nil
 }
 
-func parseComment(comment string, meta *FunctionMetadata, hookMeta map[string]*HookMetadata, funcName string) {
+func parseComment(comment string, meta *FunctionMetadata, hookMeta map[string]HookMetadata, funcName string) {
 	reType := regexp.MustCompile(`@type:\s+(.*)`)
 	reDescription := regexp.MustCompile(`@description\s+(.*)`)
 	reInput := regexp.MustCompile(`@input\s+(\w+)\s+\((.*?)\):\s+(.*)`)
@@ -117,9 +140,9 @@ func parseComment(comment string, meta *FunctionMetadata, hookMeta map[string]*H
 		}
 	}
 	if reBefore.MatchString(comment) {
-		hookMeta["pre-hook_"+funcName] = &HookMetadata{Type: "pre-hook", Description: meta.Description, Parameters: meta.Parameters, Returns: meta.Returns}
+		hookMeta["pre-hook_"+funcName] = HookMetadata{Type: "pre-hook", Description: meta.Description, Parameters: meta.Parameters, Returns: meta.Returns}
 	}
 	if reAfter.MatchString(comment) {
-		hookMeta["post-hook_"+funcName] = &HookMetadata{Type: "post-hook", Description: meta.Description, Parameters: meta.Parameters, Returns: meta.Returns}
+		hookMeta["post-hook_"+funcName] = HookMetadata{Type: "post-hook", Description: meta.Description, Parameters: meta.Parameters, Returns: meta.Returns}
 	}
 }

@@ -134,9 +134,8 @@ func main() {
 		log.Fatalf("Workflow execution failed: %v", err)
 	}
 
-	// Obtener la metadata de las funciones
-	src := "./cmd/main.go"
-	metadata, err := workflow.ParseComments(src)
+	srcDir := "./cmd"
+	metadata, err := workflow.ParseComments(srcDir)
 	if err != nil {
 		log.Fatalf("Failed to parse comments: %v", err)
 	}
