@@ -1,7 +1,7 @@
 package workflow
 
 type ForeachNode struct {
-	Node
+	Node[any]
 	Collection  []interface{}
 	IterateFunc func(interface{}) (interface{}, error)
 }

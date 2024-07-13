@@ -101,28 +101,6 @@ func (wm *WorkflowManager) findNodeByID(id string) NodeInterface {
 	return nil
 }
 
-func (wm *WorkflowManager) executeSubDag(node *Node, data interface{}) (interface{}, error) {
-	subDag := node.SubDag
-	var result interface{}
-	var err error
-	for _, subNode := range subDag.Nodes {
-		result, err = wm.executeNode(subNode, data)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return result, nil
-}
-
-func (wm *WorkflowManager) executeConditional(node *Node, data interface{}) (interface{}, error) {
-	for _, edge := range wm.graph.Edges {
-		if edge.From.GetID() == node.GetID() && edge.Condition() {
-			return wm.executeNode(edge.To, data)
-		}
-	}
-	return nil, nil
-}
-
 func (wm *WorkflowManager) LoadFromConfig(config *config.WorkflowConfig) error {
 	nodeMap := make(map[string]NodeInterface)
 
@@ -141,7 +119,7 @@ func (wm *WorkflowManager) LoadFromConfig(config *config.WorkflowConfig) error {
 			if nodeConfig.AfterExecute != "" {
 				afterFunc = wrapHookFunc(wm.hookFuncs[nodeConfig.AfterExecute])
 			}
-			node = &Node{
+			node = &Node[interface{}]{
 				ID:            nodeConfig.ID,
 				Type:          Task,
 				TaskFunc:      wrapTaskFunc(taskFunc),
@@ -158,7 +136,7 @@ func (wm *WorkflowManager) LoadFromConfig(config *config.WorkflowConfig) error {
 				parallelTasks[i] = taskNode
 			}
 			node = &ParallelNode{
-				Node: Node{
+				Node: Node[interface{}]{
 					ID:   nodeConfig.ID,
 					Type: Branch,
 				},
