@@ -18,13 +18,42 @@ type WorkflowManager struct {
 	hooks      map[string]interface{}
 }
 
-func NewWorkflowManager(stateStore storage.StateStore, tasks, hooks map[string]interface{}) *WorkflowManager {
+func NewWorkflowManager() *WorkflowManager {
 	return &WorkflowManager{
-		graph:      &Graph{},
-		stateStore: stateStore,
-		tasks:      tasks,
-		hooks:      hooks,
+		graph: &Graph{},
+		tasks: make(map[string]interface{}),
+		hooks: make(map[string]interface{}),
 	}
+}
+
+func (wm *WorkflowManager) RegisterStateStore(store storage.StateStore) {
+	wm.mu.Lock()
+	defer wm.mu.Unlock()
+	wm.stateStore = store
+}
+
+func (wm *WorkflowManager) RegisterTask(name string, taskFunc interface{}) {
+	wm.mu.Lock()
+	defer wm.mu.Unlock()
+	wm.tasks[name] = taskFunc
+}
+
+func (wm *WorkflowManager) UnregisterTask(name string) {
+	wm.mu.Lock()
+	defer wm.mu.Unlock()
+	delete(wm.tasks, name)
+}
+
+func (wm *WorkflowManager) RegisterHook(name string, hookFunc interface{}) {
+	wm.mu.Lock()
+	defer wm.mu.Unlock()
+	wm.hooks[name] = hookFunc
+}
+
+func (wm *WorkflowManager) UnregisterHook(name string) {
+	wm.mu.Lock()
+	defer wm.mu.Unlock()
+	delete(wm.hooks, name)
 }
 
 func (wm *WorkflowManager) AddNode(node NodeInterface) {

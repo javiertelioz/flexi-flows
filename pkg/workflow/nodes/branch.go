@@ -1,13 +1,16 @@
-package workflow
+package nodes
 
-import "fmt"
+import (
+	"fmt"
+	"github.com/javiertelioz/go-flows/pkg/workflow"
+)
 
 type BranchNode struct {
-	Node[interface{}]
-	Branches []NodeInterface
+	workflow.Node[interface{}]
+	Branches []workflow.NodeInterface
 }
 
-func (b *BranchNode) Execute(wm *WorkflowManager, data interface{}) (interface{}, error) {
+func (b *BranchNode) Execute(wm *workflow.WorkflowManager, data interface{}) (interface{}, error) {
 	fmt.Printf("Executing BranchNode: %s\n", b.ID)
 	for _, branch := range b.Branches {
 		fmt.Printf("Executing branch with ID: %s\n", branch.GetID())

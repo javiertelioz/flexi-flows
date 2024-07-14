@@ -22,7 +22,7 @@ func TestParallelNodeTestSuite(t *testing.T) {
 }
 
 func (suite *ParallelNodeTestSuite) SetupTest() {
-	suite.wm = workflow.NewWorkflowManager(nil, nil, nil)
+	suite.wm = workflow.NewWorkflowManager()
 
 	suite.mockNode1 = new(MockNode)
 	suite.mockNode2 = new(MockNode)

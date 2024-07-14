@@ -133,36 +133,34 @@ func afterSum(result int) (int, error) {
 
 func main() {
 	// Crear una instancia de StateStore (opcional)
-	// stateStore := workflow.NewJSONStateStore("flow.json")
+	//stateStore := storage.NewJSONStateStore("flow.json")
 
-	// Crear una instancia de WorkflowManager con StateStore
-	// wm := workflow.NewWorkflowManager(nil)
+	wm := workflow.NewWorkflowManager()
 
-	// Crear una instancia de WorkflowManager con las funciones de tareas y hooks
-	taskFuncs := map[string]interface{}{
-		"getUserFunc": getUserFunc,
-		"isPrimeFunc": isPrimeFunc,
-		"squareFunc":  squareFunc,
-		"sumFunc":     sumFunc,
-	}
-	hookFuncs := map[string]interface{}{
-		"beforeIsPrime": beforeIsPrime,
-		"afterIsPrime":  afterIsPrime,
-		"beforeSquare":  beforeSquare,
-		"afterSquare":   afterSquare,
-		"beforeSum":     beforeSum,
-		"afterSum":      afterSum,
-	}
-	wm := workflow.NewWorkflowManager(nil, taskFuncs, hookFuncs)
+	// Register storage
+	//wm.RegisterStateStore(stateStore)
+
+	// Register task & hooks
+	wm.RegisterTask("getUserFunc", getUserFunc)
+	wm.RegisterTask("isPrimeFunc", isPrimeFunc)
+	wm.RegisterTask("squareFunc", squareFunc)
+	wm.RegisterTask("sumFunc", sumFunc)
+
+	wm.RegisterHook("beforeIsPrime", beforeIsPrime)
+	wm.RegisterHook("afterIsPrime", afterIsPrime)
+	wm.RegisterHook("beforeSquare", beforeSquare)
+	wm.RegisterHook("afterSquare", afterSquare)
+	wm.RegisterHook("beforeSum", beforeSum)
+	wm.RegisterHook("afterSum", afterSum)
 
 	// Cargar la configuración del flujo de trabajo desde un archivo JSON
-	config, err := config.LoadConfig("config/workflow.json")
+	workflowConfig, err := config.LoadConfig("config/workflow.yaml")
 	if err != nil {
 		log.Fatalf("Failed to load workflow configuration: %v", err)
 	}
 
 	// Crear nodos y edges basados en la configuración
-	err = wm.LoadFromConfig(config)
+	err = wm.LoadFromConfig(workflowConfig)
 	if err != nil {
 		log.Fatalf("Failed to load workflow from configuration: %v", err)
 	}

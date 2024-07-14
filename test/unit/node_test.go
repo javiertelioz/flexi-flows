@@ -19,7 +19,7 @@ func TestNodeTestSuite(t *testing.T) {
 }
 
 func (suite *NodeTestSuite) SetupTest() {
-	suite.wm = workflow.NewWorkflowManager(nil, nil, nil)
+	suite.wm = workflow.NewWorkflowManager()
 
 	taskFunc := func(data int) (int, error) {
 		return data * 2, nil

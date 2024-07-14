@@ -2,6 +2,7 @@ package unit
 
 import (
 	"errors"
+	"github.com/javiertelioz/go-flows/pkg/workflow/nodes"
 	"testing"
 
 	"github.com/javiertelioz/go-flows/pkg/workflow"
@@ -14,7 +15,7 @@ type BranchNodeTestSuite struct {
 	wm         *workflow.WorkflowManager
 	mockNode1  *MockNode
 	mockNode2  *MockNode
-	branchNode *workflow.BranchNode
+	branchNode *nodes.BranchNode
 }
 
 func TestBranchNodeTestSuite(t *testing.T) {
@@ -22,7 +23,7 @@ func TestBranchNodeTestSuite(t *testing.T) {
 }
 
 func (suite *BranchNodeTestSuite) SetupTest() {
-	suite.wm = workflow.NewWorkflowManager(nil, nil, nil)
+	suite.wm = workflow.NewWorkflowManager()
 
 	suite.mockNode1 = new(MockNode)
 	suite.mockNode2 = new(MockNode)
@@ -33,7 +34,7 @@ func (suite *BranchNodeTestSuite) SetupTest() {
 	suite.mockNode2.On("GetID").Return("node2")
 	suite.mockNode2.On("Execute", mock.Anything, mock.Anything).Return(nil, nil)
 
-	suite.branchNode = &workflow.BranchNode{
+	suite.branchNode = &nodes.BranchNode{
 		Node: workflow.Node[interface{}]{
 			ID:   "branch",
 			Type: workflow.Branch,

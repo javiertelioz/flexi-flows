@@ -1,21 +1,5 @@
 package workflow
 
-type NodeType int
-
-const (
-	Task NodeType = iota
-	SubDag
-	Conditional
-	Foreach
-	Branch
-)
-
-type NodeInterface interface {
-	GetID() string
-	GetType() NodeType
-	Execute(wm *WorkflowManager, data interface{}) (interface{}, error)
-}
-
 type Node[T any] struct {
 	ID            string
 	Type          NodeType

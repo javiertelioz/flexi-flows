@@ -36,7 +36,7 @@ func (suite *WorkflowManagerTestSuite) SetupTest() {
 		To:   suite.mockNode2,
 	}
 
-	suite.wm = workflow.NewWorkflowManager(nil, nil, nil)
+	suite.wm = workflow.NewWorkflowManager()
 	suite.wm.AddNode(suite.mockNode1)
 	suite.wm.AddNode(suite.mockNode2)
 	suite.wm.AddEdge(suite.mockEdge)
@@ -52,7 +52,7 @@ func (suite *WorkflowManagerTestSuite) givenNode1Fails() {
 }
 
 func (suite *WorkflowManagerTestSuite) givenStartNodeIsNil() {
-	suite.wm = workflow.NewWorkflowManager(nil, nil, nil)
+	suite.wm = workflow.NewWorkflowManager()
 }
 
 func (suite *WorkflowManagerTestSuite) givenNodeIsNil() {
