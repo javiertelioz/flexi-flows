@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/javiertelioz/go-flows/pkg/workflow/comment"
 	"log"
 	"math"
 	"net/http"
@@ -42,7 +43,7 @@ func getUserFunc(userID int) (*User, error) {
 		return nil, err
 	}
 
-	fmt.Printf("User ID: %d\nUser Name: %s", user.ID, user.Name)
+	fmt.Printf("User ID: %d\nUser Name: %s\n", user.ID, user.Name)
 	return &user, nil
 
 }
@@ -173,7 +174,7 @@ func main() {
 	}
 
 	srcDir := "./cmd"
-	metadata, err := workflow.ParseComments(srcDir)
+	metadata, err := comment.ParseComments(srcDir)
 	if err != nil {
 		log.Fatalf("Failed to parse comments: %v", err)
 	}

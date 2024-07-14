@@ -7,17 +7,18 @@ import (
 	"errors"
 
 	"github.com/javiertelioz/go-flows/pkg/workflow/config"
+	"github.com/javiertelioz/go-flows/pkg/workflow/storage"
 )
 
 type WorkflowManager struct {
 	graph      *Graph
-	stateStore StateStore
+	stateStore storage.StateStore
 	mu         sync.Mutex
 	taskFuncs  map[string]interface{}
 	hookFuncs  map[string]interface{}
 }
 
-func NewWorkflowManager(stateStore StateStore, taskFuncs, hookFuncs map[string]interface{}) *WorkflowManager {
+func NewWorkflowManager(stateStore storage.StateStore, taskFuncs, hookFuncs map[string]interface{}) *WorkflowManager {
 	return &WorkflowManager{
 		graph:      &Graph{},
 		stateStore: stateStore,

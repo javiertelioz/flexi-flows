@@ -8,15 +8,17 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func LoadConfigFromJSON(filename string) (*WorkflowConfig, error) {
-	data, err := os.ReadFile(filename)
-
+func LoadConfig(filePath string) (*WorkflowConfig, error) {
+	file, err := os.Open(filePath)
 	if err != nil {
 		return nil, err
 	}
+	defer file.Close()
 
 	var config WorkflowConfig
-	err = json.Unmarshal(data, &config)
+	decoder := json.NewDecoder(file)
+
+	err = decoder.Decode(&config)
 	if err != nil {
 		return nil, err
 	}
@@ -24,8 +26,8 @@ func LoadConfigFromJSON(filename string) (*WorkflowConfig, error) {
 	return &config, nil
 }
 
-func LoadConfigFromYAML(filename string) (*WorkflowConfig, error) {
-	data, err := os.ReadFile(filename)
+func LoadYAMLConfig(filePath string) (*WorkflowConfig, error) {
+	data, err := os.ReadFile(filePath)
 	if err != nil {
 		return nil, err
 	}

@@ -1,11 +1,11 @@
 package test
 
 import (
+	"github.com/javiertelioz/go-flows/pkg/workflow/comment"
 	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/javiertelioz/go-flows/pkg/workflow"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -69,7 +69,7 @@ func (suite *CommentParserTestSuite) givenTestSourceCode() string {
 }
 
 // When methods
-func (suite *CommentParserTestSuite) whenParseComments(src string) (map[string]workflow.FunctionMetadata, error) {
+func (suite *CommentParserTestSuite) whenParseComments(src string) (map[string]comment.FunctionMetadata, error) {
 	dir := "./test_src"
 	err := os.Mkdir(dir, 0755)
 	if err != nil {
@@ -82,11 +82,11 @@ func (suite *CommentParserTestSuite) whenParseComments(src string) (map[string]w
 		return nil, err
 	}
 
-	return workflow.ParseComments(dir)
+	return comment.ParseComments(dir)
 }
 
 // Then methods
-func (suite *CommentParserTestSuite) thenExpectMetadataToMatch(expected, actual map[string]workflow.FunctionMetadata) {
+func (suite *CommentParserTestSuite) thenExpectMetadataToMatch(expected, actual map[string]comment.FunctionMetadata) {
 	suite.Equal(expected, actual)
 }
 

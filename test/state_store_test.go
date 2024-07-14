@@ -1,18 +1,18 @@
 package test
 
 import (
+	"github.com/javiertelioz/go-flows/pkg/workflow/storage"
 	"os"
 	"testing"
 
-	"github.com/javiertelioz/go-flows/pkg/workflow"
 	"github.com/stretchr/testify/suite"
 )
 
 type StateStoreTestSuite struct {
 	suite.Suite
 	jsonFilePath string
-	jsonStore    *workflow.JSONStateStore
-	memStore     *workflow.MemoryStateStore
+	jsonStore    *storage.JSONStateStore
+	memStore     *storage.MemoryStateStore
 }
 
 func TestStateStoreTestSuite(t *testing.T) {
@@ -22,10 +22,10 @@ func TestStateStoreTestSuite(t *testing.T) {
 func (suite *StateStoreTestSuite) SetupTest() {
 	// Set up JSONStateStore
 	suite.jsonFilePath = "test_state.json"
-	suite.jsonStore = workflow.NewJSONStateStore(suite.jsonFilePath)
+	suite.jsonStore = storage.NewJSONStateStore(suite.jsonFilePath)
 
 	// Set up MemoryStateStore
-	suite.memStore = workflow.NewMemoryStateStore()
+	suite.memStore = storage.NewMemoryStateStore()
 }
 
 func (suite *StateStoreTestSuite) TearDownTest() {
