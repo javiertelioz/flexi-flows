@@ -14,16 +14,16 @@ type WorkflowManager struct {
 	graph      *Graph
 	stateStore storage.StateStore
 	mu         sync.Mutex
-	taskFuncs  map[string]interface{}
-	hookFuncs  map[string]interface{}
+	tasks      map[string]interface{}
+	hooks      map[string]interface{}
 }
 
-func NewWorkflowManager(stateStore storage.StateStore, taskFuncs, hookFuncs map[string]interface{}) *WorkflowManager {
+func NewWorkflowManager(stateStore storage.StateStore, tasks, hooks map[string]interface{}) *WorkflowManager {
 	return &WorkflowManager{
 		graph:      &Graph{},
 		stateStore: stateStore,
-		taskFuncs:  taskFuncs,
-		hookFuncs:  hookFuncs,
+		tasks:      tasks,
+		hooks:      hooks,
 	}
 }
 
@@ -48,64 +48,8 @@ func (wm *WorkflowManager) Execute(startNodeID string, initialData interface{}) 
 		return errors.New("start node not found")
 	}
 
-	_, err := wm.executeNode(startNode, initialData)
+	_, err := wm.ExecuteNode(startNode, initialData)
 	return err
-}
-
-func (wm *WorkflowManager) ExecuteNode(node NodeInterface, data interface{}) (interface{}, error) {
-	return wm.executeNode(node, data)
-}
-
-func (wm *WorkflowManager) executeNode(node NodeInterface, data interface{}) (interface{}, error) {
-	if node == nil {
-		return nil, errors.New("node is nil")
-	}
-
-	// Cargar el estado antes de la ejecución solo si stateStore no es nil
-	if wm.stateStore != nil {
-		state, err := wm.stateStore.LoadState(node.GetID())
-		if err != nil {
-			return nil, err
-		}
-		if state != nil {
-			data = state
-		}
-	}
-
-	result, err := node.Execute(wm, data)
-	if err != nil {
-		return nil, err
-	}
-
-	// Guardar el estado después de la ejecución solo si stateStore no es nil
-	if wm.stateStore != nil {
-		err = wm.stateStore.SaveState(node.GetID(), result)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	for _, edge := range wm.graph.Edges {
-		if edge.From.GetID() == node.GetID() {
-			if edge.To == nil {
-				continue
-			}
-			if edge.Condition == nil || edge.Condition() {
-				return wm.executeNode(edge.To, result)
-			}
-		}
-	}
-
-	return result, nil
-}
-
-func (wm *WorkflowManager) findNodeByID(id string) NodeInterface {
-	for _, node := range wm.graph.Nodes {
-		if node.GetID() == id {
-			return node
-		}
-	}
-	return nil
 }
 
 func (wm *WorkflowManager) LoadFromConfig(config *config.WorkflowConfig) error {
@@ -115,16 +59,16 @@ func (wm *WorkflowManager) LoadFromConfig(config *config.WorkflowConfig) error {
 		var node NodeInterface
 		switch nodeConfig.Type {
 		case "Task":
-			taskFunc, ok := wm.taskFuncs[nodeConfig.TaskFunc]
+			taskFunc, ok := wm.tasks[nodeConfig.TaskFunc]
 			if !ok {
-				return errors.New("task function not found: " + nodeConfig.TaskFunc)
+				return errors.New("tasks function not found: " + nodeConfig.TaskFunc)
 			}
 			var beforeFunc, afterFunc func(interface{}) (interface{}, error)
 			if nodeConfig.BeforeExecute != "" {
-				beforeFunc = wrapHookFunc(wm.hookFuncs[nodeConfig.BeforeExecute])
+				beforeFunc = wrapHookFunc(wm.hooks[nodeConfig.BeforeExecute])
 			}
 			if nodeConfig.AfterExecute != "" {
-				afterFunc = wrapHookFunc(wm.hookFuncs[nodeConfig.AfterExecute])
+				afterFunc = wrapHookFunc(wm.hooks[nodeConfig.AfterExecute])
 			}
 			node = &Node[interface{}]{
 				ID:            nodeConfig.ID,
@@ -138,7 +82,7 @@ func (wm *WorkflowManager) LoadFromConfig(config *config.WorkflowConfig) error {
 			for i, taskID := range nodeConfig.ParallelTasks {
 				taskNode, ok := nodeMap[taskID]
 				if !ok {
-					return errors.New("task node not found: " + taskID)
+					return errors.New("tasks node not found: " + taskID)
 				}
 				parallelTasks[i] = taskNode
 			}
@@ -172,6 +116,56 @@ func (wm *WorkflowManager) LoadFromConfig(config *config.WorkflowConfig) error {
 		})
 	}
 
+	return nil
+}
+
+func (wm *WorkflowManager) ExecuteNode(node NodeInterface, data interface{}) (interface{}, error) {
+	if node == nil {
+		return nil, errors.New("node is nil")
+	}
+
+	if wm.stateStore != nil {
+		state, err := wm.stateStore.LoadState(node.GetID())
+		if err != nil {
+			return nil, err
+		}
+		if state != nil {
+			data = state
+		}
+	}
+
+	result, err := node.Execute(wm, data)
+	if err != nil {
+		return nil, err
+	}
+
+	if wm.stateStore != nil {
+		err = wm.stateStore.SaveState(node.GetID(), result)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	for _, edge := range wm.graph.Edges {
+		if edge.From.GetID() == node.GetID() {
+			if edge.To == nil {
+				continue
+			}
+			if edge.Condition == nil || edge.Condition() {
+				return wm.ExecuteNode(edge.To, result)
+			}
+		}
+	}
+
+	return result, nil
+}
+
+func (wm *WorkflowManager) findNodeByID(id string) NodeInterface {
+	for _, node := range wm.graph.Nodes {
+		if node.GetID() == id {
+			return node
+		}
+	}
 	return nil
 }
 

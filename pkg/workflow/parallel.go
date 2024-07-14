@@ -18,7 +18,7 @@ func (p *ParallelNode) Execute(wm *WorkflowManager, data interface{}) (interface
 		wg.Add(1)
 		go func(i int, task NodeInterface) {
 			defer wg.Done()
-			result, err := wm.executeNode(task, data)
+			result, err := wm.ExecuteNode(task, data)
 			results[i] = result
 			errors[i] = err
 		}(i, task)
