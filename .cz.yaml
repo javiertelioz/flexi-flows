@@ -1,61 +1,63 @@
----
 commitizen:
-  changelog_file: CHANGELOG.md
-  changelog_incremental: true
-  message:
-    body: \n\n{body}
-    breaking: '\n\nBREAKING CHANGE: {breaking}'
-    footer: \n\n{footer}
-    scope: ({scope})
-    subject: ': {subject}'
-    type: '{type}'
   name: cz_conventional_commits
-  questions:
-  - choices:
-    - name: 'feat:     A new feature'
-      value: feat
-    - name: 'fix:      A bug fix'
-      value: fix
-    - name: 'docs:     Documentation only changes'
-      value: docs
-    - name: 'style:    Changes that do not affect the meaning of the code (white-space,
-        formatting, missing semi-colons, etc)'
-      value: style
-    - name: 'refactor: A code change that neither fixes a bug nor adds a feature'
-      value: refactor
-    - name: 'perf:     A code change that improves performance'
-      value: perf
-    - name: 'test:     Adding missing tests or correcting existing tests'
-      value: test
-    - name: 'build:    Changes that affect the build system or external dependencies
-        (example scopes: gulp, broccoli, npm)'
-      value: build
-    - name: 'ci:       Changes to our CI configuration files and scripts (example
-        scopes: Travis, Circle, BrowserStack, SauceLabs)'
-      value: ci
-    - name: 'chore:    Other changes that don''t modify src or test files'
-      value: chore
-    - name: 'revert:   Reverts a previous commit'
-      value: revert
-    message: 'Select the type of change that you''re committing:'
-    name: type
-    type: list
-  - message: 'What is the scope of this change (e.g. component or file name):'
-    name: scope
-    type: input
-  - message: 'Write a short, imperative tense description of the change:'
-    name: subject
-    type: input
-  - message: 'Provide a longer description of the change (optional). Use ''|'' to
-      break new line:'
-    name: body
-    type: input
-  - message: 'List any breaking changes (optional):'
-    name: breaking
-    type: input
-  - message: 'Issues this commit closes (optional). E.g.: #31, #34:'
-    name: footer
-    type: input
+  version: 0.1.0
   tag_format: v$version
   update_changelog_on_bump: true
-  version: 0.1.0
+  changelog_file: CHANGELOG.md
+  changelog_incremental: true
+
+  questions:
+    - type: list
+      name: type
+      message: "Select the type of change that you're committing:"
+      choices:
+        - value: feat
+          name: "feat:     A new feature"
+        - value: fix
+          name: "fix:      A bug fix"
+        - value: docs
+          name: "docs:     Documentation only changes"
+        - value: style
+          name: "style:    Changes that do not affect the meaning of the code (white-space, formatting, missing semi-colons, etc)"
+        - value: refactor
+          name: "refactor: A code change that neither fixes a bug nor adds a feature"
+        - value: perf
+          name: "perf:     A code change that improves performance"
+        - value: test
+          name: "test:     Adding missing tests or correcting existing tests"
+        - value: build
+          name: "build:    Changes that affect the build system or external dependencies (example scopes: gulp, broccoli, npm)"
+        - value: ci
+          name: "ci:       Changes to our CI configuration files and scripts (example scopes: Travis, Circle, BrowserStack, SauceLabs)"
+        - value: chore
+          name: "chore:    Other changes that don't modify src or test files"
+        - value: revert
+          name: "revert:   Reverts a previous commit"
+
+    - type: input
+      name: scope
+      message: "What is the scope of this change (e.g. component or file name):"
+
+    - type: input
+      name: subject
+      message: "Write a short, imperative tense description of the change:"
+
+    - type: input
+      name: body
+      message: "Provide a longer description of the change (optional). Use '|' to break new line:"
+
+    - type: input
+      name: breaking
+      message: "List any breaking changes (optional):"
+
+    - type: input
+      name: footer
+      message: "Issues this commit closes (optional). E.g.: #31, #34:"
+
+  message:
+    type: '{type}'
+    scope: '({scope})'
+    subject: ': {subject}'
+    body: '\n\n{body}'
+    breaking: '\n\nBREAKING CHANGE: {breaking}'
+    footer: '\n\n{footer}'
