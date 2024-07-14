@@ -1,4 +1,4 @@
-package test
+package unit
 
 import (
 	"github.com/javiertelioz/go-flows/pkg/workflow/storage"

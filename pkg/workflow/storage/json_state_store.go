@@ -27,6 +27,7 @@ func (s *JSONStateStore) SaveState(nodeID string, data interface{}) error {
 	if err != nil {
 		return err
 	}
+
 	defer file.Close()
 
 	state := make(map[string]interface{})
