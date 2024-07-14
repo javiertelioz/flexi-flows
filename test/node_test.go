@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/javiertelioz/workflows/pkg/workflow"
+	"github.com/javiertelioz/go-flows/pkg/workflow"
 	"github.com/stretchr/testify/suite"
 )
 

@@ -1,15 +1,51 @@
 package main
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"math"
+	"net/http"
 
-	"encoding/json"
-
-	"github.com/javiertelioz/workflows/pkg/workflow"
-	"github.com/javiertelioz/workflows/pkg/workflow/config"
+	"github.com/javiertelioz/go-flows/pkg/workflow"
+	"github.com/javiertelioz/go-flows/pkg/workflow/config"
 )
+
+type User struct {
+	ID   int    `json:"id"`
+	Name string `json:"name"`
+}
+
+// getUserFunc
+// @type: task
+// @description Retrieve user information by id.
+//
+// @input userID (int): User ID.
+//
+// @output User: Returns user information.
+// @output error: Returns an error if user no exist.
+func getUserFunc(userID int) (*User, error) {
+	if userID == 0 {
+		return nil, errors.New("error to retrieve user")
+	}
+
+	resp, err := http.Get(fmt.Sprintf("https://api.github.com/users/%d", userID))
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var user User
+	err = json.NewDecoder(resp.Body).Decode(&user)
+	if err != nil {
+		return nil, err
+	}
+
+	fmt.Printf("User ID: %d\nUser Name: %s", user.ID, user.Name)
+	return &user, nil
+
+}
 
 // isPrimeFunc
 // @type: task
@@ -103,6 +139,7 @@ func main() {
 
 	// Crear una instancia de WorkflowManager con las funciones de tareas y hooks
 	taskFuncs := map[string]interface{}{
+		"getUserFunc": getUserFunc,
 		"isPrimeFunc": isPrimeFunc,
 		"squareFunc":  squareFunc,
 		"sumFunc":     sumFunc,
