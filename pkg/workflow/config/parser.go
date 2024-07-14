@@ -1,29 +1,36 @@
 package config
 
 import (
+	"errors"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"encoding/json"
 
 	"gopkg.in/yaml.v3"
 )
 
+const (
+	JSON = "json"
+	YAML = "yaml"
+	YML  = "yml"
+)
+
 func LoadConfig(filePath string) (*WorkflowConfig, error) {
-	file, err := os.Open(filePath)
-	if err != nil {
-		return nil, err
+
+	fileType := strings.ToLower(
+		strings.TrimPrefix(filepath.Ext(filePath), "."),
+	)
+
+	switch fileType {
+	case JSON:
+		return LoadJSONConfig(filePath)
+	case YAML, YML:
+		return LoadYAMLConfig(filePath)
+	default:
+		return nil, errors.New("unsupported file type")
 	}
-	defer file.Close()
-
-	var config WorkflowConfig
-	decoder := json.NewDecoder(file)
-
-	err = decoder.Decode(&config)
-	if err != nil {
-		return nil, err
-	}
-
-	return &config, nil
 }
 
 func LoadYAMLConfig(filePath string) (*WorkflowConfig, error) {
@@ -34,6 +41,24 @@ func LoadYAMLConfig(filePath string) (*WorkflowConfig, error) {
 
 	var config WorkflowConfig
 	err = yaml.Unmarshal(data, &config)
+	if err != nil {
+		return nil, err
+	}
+
+	return &config, nil
+}
+
+func LoadJSONConfig(filePath string) (*WorkflowConfig, error) {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	var config WorkflowConfig
+	decoder := json.NewDecoder(file)
+
+	err = decoder.Decode(&config)
 	if err != nil {
 		return nil, err
 	}
