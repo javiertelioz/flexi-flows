@@ -2,7 +2,6 @@ package test
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -40,7 +39,11 @@ func (suite *ConfigTestSuite) SetupTest() {
 	}
 	jsonBytes, _ := json.Marshal(jsonData)
 	suite.jsonFilePath = "test_config.json"
-	ioutil.WriteFile(suite.jsonFilePath, jsonBytes, 0644)
+
+	err := os.WriteFile(suite.jsonFilePath, jsonBytes, 0644)
+	if err != nil {
+		return
+	}
 
 	// Create temporary YAML config file
 	yamlData := config.WorkflowConfig{
@@ -60,7 +63,11 @@ func (suite *ConfigTestSuite) SetupTest() {
 	}
 	yamlBytes, _ := yaml.Marshal(yamlData)
 	suite.yamlFilePath = "test_config.yaml"
-	ioutil.WriteFile(suite.yamlFilePath, yamlBytes, 0644)
+
+	err = os.WriteFile(suite.yamlFilePath, yamlBytes, 0644)
+	if err != nil {
+		return
+	}
 }
 
 func (suite *ConfigTestSuite) TearDownTest() {
@@ -99,7 +106,7 @@ func (suite *ConfigTestSuite) TestLoadYAMLConfigFileNotFound() {
 func (suite *ConfigTestSuite) TestLoadJSONConfigInvalidFormat() {
 	// Create a file with invalid JSON content
 	invalidFilePath := "invalid_config.json"
-	ioutil.WriteFile(invalidFilePath, []byte("invalid json"), 0644)
+	os.WriteFile(invalidFilePath, []byte("invalid json"), 0644)
 	defer os.Remove(invalidFilePath)
 
 	_, err := config.LoadConfig(invalidFilePath)
@@ -109,7 +116,7 @@ func (suite *ConfigTestSuite) TestLoadJSONConfigInvalidFormat() {
 func (suite *ConfigTestSuite) TestLoadYAMLConfigInvalidFormat() {
 	// Create a file with invalid YAML content
 	invalidFilePath := "invalid_config.yaml"
-	ioutil.WriteFile(invalidFilePath, []byte("invalid yaml"), 0644)
+	os.WriteFile(invalidFilePath, []byte("invalid yaml"), 0644)
 	defer os.Remove(invalidFilePath)
 
 	_, err := config.LoadYAMLConfig(invalidFilePath)

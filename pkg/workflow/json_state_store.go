@@ -36,8 +36,15 @@ func (s *JSONStateStore) SaveState(nodeID string, data interface{}) error {
 
 	state[nodeID] = data
 
-	file.Seek(0, 0)
-	file.Truncate(0)
+	_, err = file.Seek(0, 0)
+	if err != nil {
+		return err
+	}
+
+	err = file.Truncate(0)
+	if err != nil {
+		return err
+	}
 	encoder := json.NewEncoder(file)
 	return encoder.Encode(state)
 }

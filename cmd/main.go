@@ -1,10 +1,11 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
 	"math"
+
+	"encoding/json"
 
 	"github.com/javiertelioz/workflows/pkg/workflow"
 	"github.com/javiertelioz/workflows/pkg/workflow/config"
