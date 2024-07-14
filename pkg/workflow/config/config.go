@@ -3,7 +3,6 @@ package config
 import (
 	"encoding/json"
 	"gopkg.in/yaml.v3"
-	"io/ioutil"
 	"os"
 )
 
@@ -44,7 +43,7 @@ func LoadConfig(filePath string) (*WorkflowConfig, error) {
 }
 
 func LoadYAMLConfig(filePath string) (*WorkflowConfig, error) {
-	data, err := ioutil.ReadFile(filePath)
+	data, err := os.ReadFile(filePath)
 	if err != nil {
 		return nil, err
 	}
