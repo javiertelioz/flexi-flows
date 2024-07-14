@@ -1,9 +1,11 @@
 package config
 
 import (
-	"encoding/json"
-	"gopkg.in/yaml.v3"
 	"os"
+
+	"encoding/json"
+
+	"gopkg.in/yaml.v3"
 )
 
 func LoadConfigFromJSON(filename string) (*WorkflowConfig, error) {
