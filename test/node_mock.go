@@ -3,7 +3,7 @@ package test
 import (
 	"github.com/stretchr/testify/mock"
 
-	"github.com/javiertelioz/workflows/pkg/workflow"
+	"github.com/javiertelioz/go-flows/pkg/workflow"
 )
 
 type MockNode struct {

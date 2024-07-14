@@ -6,7 +6,7 @@ import (
 
 	"errors"
 
-	"github.com/javiertelioz/workflows/pkg/workflow/config"
+	"github.com/javiertelioz/go-flows/pkg/workflow/config"
 )
 
 type WorkflowManager struct {

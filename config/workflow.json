@@ -25,12 +25,21 @@
       "taskFunc": "sumFunc",
       "beforeExecute": "beforeSum",
       "afterExecute": "afterSum"
+    },
+    {
+      "id": "user",
+      "type": "Task",
+      "taskFunc": "getUserFunc"
     }
   ],
   "edges": [
     {
       "from": "parallel",
       "to": "sum"
+    },
+    {
+      "from": "sum",
+      "to": "user"
     }
   ]
 }
