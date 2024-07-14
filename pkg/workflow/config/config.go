@@ -34,6 +34,7 @@ func LoadConfig(filePath string) (*WorkflowConfig, error) {
 
 	var config WorkflowConfig
 	decoder := json.NewDecoder(file)
+
 	err = decoder.Decode(&config)
 	if err != nil {
 		return nil, err

@@ -1,9 +1,10 @@
 package workflow
 
 import (
-	"errors"
 	"reflect"
 	"sync"
+
+	"errors"
 
 	"github.com/javiertelioz/workflows/pkg/workflow/config"
 )

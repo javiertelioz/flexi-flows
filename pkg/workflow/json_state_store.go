@@ -1,10 +1,11 @@
 package workflow
 
 import (
-	"encoding/json"
-	"errors"
 	"os"
 	"sync"
+
+	"encoding/json"
+	"errors"
 )
 
 type JSONStateStore struct {

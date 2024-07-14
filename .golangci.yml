@@ -1,6 +1,9 @@
 linters-settings:
   dupl:
     threshold: 100
+  wsl:
+    checks:
+      if-assignment-cuddling: false
   errorlint:
     errorf: true
   errcheck:
@@ -46,20 +49,11 @@ linters-settings:
         allow:
           - golang.org/x/text/cases
           - golang.org/x/text/language
-          - gorm.io/gorm
-          - gorm.io/gorm/logger
-          - github.com/spf13/viper
-          - github.com/gin-gonic/gin
-          - gorm.io/driver/postgres
-          - github.com/rs/zerolog
-          - github.com/slack-go/slack
-          - github.com/swaggo/gin-swagger
           - github.com/stretchr/testify/mock
           - github.com/stretchr/testify/suite
-          - github.com/go-playground/validator/v10
-          - github.com/javiertelioz/clean-architecture-go/pkg/
-          - github.com/javiertelioz/clean-architecture-go/config
-          - github.com/javiertelioz/clean-architecture-go/test/application/use_cases/user/mocks
+          - github.com/javiertelioz/workflows/pkg/
+          - github.com/javiertelioz/workflows/config
+          - github.com/javiertelioz/workflows/test/mocks
 
 linters:
   disable-all: true
@@ -120,14 +114,6 @@ linters:
     - wsl
     - whitespace
 
-# disable:
-#    - exhaustivestruct
-#    - ifshort
-#    - goheader
-#    - prealloc
-#    - testpackage
-#    - wrapcheck
-
 issues:
   exclude-dirs:
     - docs
@@ -140,3 +126,14 @@ issues:
     - path: internal/controller/http
       linters:
         - godot
+
+run:
+  go: "1.22"
+  timeout: 5m
+  output: line-number
+  issues-exit-code: 1
+  max-issues-per-linter: 100
+  max-same-issues: 3
+
+tests:
+  golangci-lint: "run"

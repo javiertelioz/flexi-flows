@@ -99,7 +99,7 @@ func main() {
 	// stateStore := workflow.NewJSONStateStore("flow.json")
 
 	// Crear una instancia de WorkflowManager con StateStore
-	//wm := workflow.NewWorkflowManager(nil)
+	// wm := workflow.NewWorkflowManager(nil)
 
 	// Crear una instancia de WorkflowManager con las funciones de tareas y hooks
 	taskFuncs := map[string]interface{}{
@@ -148,8 +148,8 @@ func main() {
 
 	fmt.Printf("Function metadata:\n%s\n", metadataJSON)
 
-	/*// Nodo para verificar si un número es primo
-	isPrimeNode := &workflow.Node{
+	// Nodo para verificar si un número es primo
+	/* isPrimeNode := &workflow.Node{
 		ID:   "isPrime",
 		Type: workflow.Task,
 		TaskFunc: func(data interface{}) (interface{}, error) {
