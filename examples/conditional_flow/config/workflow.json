@@ -1,0 +1,31 @@
+{
+  "nodes": [
+    {
+      "id": "condition",
+      "type": "Conditional",
+      "taskFunc": "ConditionFunc",
+      "trueNext": "trueBranch",
+      "falseNext": "falseBranch"
+    },
+    {
+      "id": "trueBranch",
+      "type": "Task",
+      "taskFunc": "TrueBranch"
+    },
+    {
+      "id": "falseBranch",
+      "type": "Task",
+      "taskFunc": "FalseBranch"
+    }
+  ],
+  "edges": [
+    {
+      "from": "condition",
+      "to": "trueBranch"
+    },
+    {
+      "from": "condition",
+      "to": "falseBranch"
+    }
+  ]
+}

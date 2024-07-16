@@ -2,7 +2,6 @@ package unit
 
 import (
 	"errors"
-	"github.com/javiertelioz/go-flows/pkg/workflow/nodes"
 	"testing"
 
 	"github.com/javiertelioz/go-flows/pkg/workflow"
@@ -12,7 +11,7 @@ import (
 type ForeachNodeTestSuite struct {
 	suite.Suite
 	wm          *workflow.WorkflowManager
-	foreachNode *nodes.ForeachNode
+	foreachNode *workflow.ForeachNode
 }
 
 func TestForeachNodeTestSuite(t *testing.T) {
@@ -26,7 +25,7 @@ func (suite *ForeachNodeTestSuite) SetupTest() {
 		return item.(int) * 2, nil
 	}
 
-	suite.foreachNode = &nodes.ForeachNode{
+	suite.foreachNode = &workflow.ForeachNode{
 		Node: workflow.Node[interface{}]{
 			ID:   "foreach",
 			Type: workflow.Foreach,

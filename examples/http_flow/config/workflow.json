@@ -1,0 +1,45 @@
+{
+  "nodes": [
+    {
+      "id": "isPrime",
+      "type": "Task",
+      "taskFunc": "isPrimeFunc",
+      "beforeExecute": "beforeIsPrime",
+      "afterExecute": "afterIsPrime"
+    },
+    {
+      "id": "square",
+      "type": "Task",
+      "taskFunc": "squareFunc",
+      "beforeExecute": "beforeSquare",
+      "afterExecute": "afterSquare"
+    },
+    {
+      "id": "parallel",
+      "type": "Parallel",
+      "parallelTasks": ["isPrime", "square"]
+    },
+    {
+      "id": "sum",
+      "type": "Task",
+      "taskFunc": "sumFunc",
+      "beforeExecute": "beforeSum",
+      "afterExecute": "afterSum"
+    },
+    {
+      "id": "user",
+      "type": "Task",
+      "taskFunc": "getUserFunc"
+    }
+  ],
+  "edges": [
+    {
+      "from": "parallel",
+      "to": "sum"
+    },
+    {
+      "from": "sum",
+      "to": "user"
+    }
+  ]
+}

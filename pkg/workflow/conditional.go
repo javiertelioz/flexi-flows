@@ -1,15 +1,13 @@
-package nodes
-
-import "github.com/javiertelioz/go-flows/pkg/workflow"
+package workflow
 
 type ConditionalNode struct {
-	workflow.Node[interface{}]
+	Node[interface{}]
 	Condition func(data interface{}) bool
-	TrueNext  workflow.NodeInterface
-	FalseNext workflow.NodeInterface
+	TrueNext  NodeInterface
+	FalseNext NodeInterface
 }
 
-func (n *ConditionalNode) Execute(wm *workflow.WorkflowManager, data interface{}) (interface{}, error) {
+func (n *ConditionalNode) Execute(wm *WorkflowManager, data interface{}) (interface{}, error) {
 	if n.Condition(data) {
 		if n.TrueNext != nil {
 			return wm.ExecuteNode(n.TrueNext, data)

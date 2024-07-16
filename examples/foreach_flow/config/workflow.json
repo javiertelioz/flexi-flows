@@ -1,0 +1,11 @@
+{
+  "nodes": [
+    {
+      "id": "foreach1",
+      "type": "Foreach",
+      "taskFunc": "IterateFunc",
+      "collection": [1, 2, 3]
+    }
+  ],
+  "edges": []
+}

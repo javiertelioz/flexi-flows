@@ -1,0 +1,29 @@
+{
+  "nodes": [
+    {
+      "id": "branch1",
+      "type": "Branch",
+      "branches": ["branch2", "branch3"]
+    },
+    {
+      "id": "branch2",
+      "type": "Task",
+      "taskFunc": "Branch2"
+    },
+    {
+      "id": "branch3",
+      "type": "Task",
+      "taskFunc": "Branch3"
+    }
+  ],
+  "edges": [
+    {
+      "from": "branch1",
+      "to": "branch2"
+    },
+    {
+      "from": "branch1",
+      "to": "branch3"
+    }
+  ]
+}

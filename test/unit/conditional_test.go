@@ -2,7 +2,6 @@ package unit
 
 import (
 	"errors"
-	"github.com/javiertelioz/go-flows/pkg/workflow/nodes"
 	"testing"
 
 	"github.com/javiertelioz/go-flows/pkg/workflow"
@@ -15,7 +14,7 @@ type ConditionalNodeTestSuite struct {
 	wm              *workflow.WorkflowManager
 	mockTrueNode    *MockNode
 	mockFalseNode   *MockNode
-	conditionalNode *nodes.ConditionalNode
+	conditionalNode *workflow.ConditionalNode
 }
 
 func TestConditionalNodeTestSuite(t *testing.T) {
@@ -38,7 +37,7 @@ func (suite *ConditionalNodeTestSuite) SetupTest() {
 		return data.(bool)
 	}
 
-	suite.conditionalNode = &nodes.ConditionalNode{
+	suite.conditionalNode = &workflow.ConditionalNode{
 		Node: workflow.Node[interface{}]{
 			ID:   "conditional",
 			Type: workflow.Conditional,

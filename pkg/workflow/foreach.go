@@ -1,14 +1,12 @@
-package nodes
-
-import "github.com/javiertelioz/go-flows/pkg/workflow"
+package workflow
 
 type ForeachNode struct {
-	workflow.Node[interface{}]
+	Node[interface{}]
 	Collection  []interface{}
 	IterateFunc func(interface{}) (interface{}, error)
 }
 
-func (n *ForeachNode) Execute(wm *workflow.WorkflowManager, data interface{}) (interface{}, error) {
+func (n *ForeachNode) Execute(wm *WorkflowManager, data interface{}) (interface{}, error) {
 	for _, item := range n.Collection {
 		_, err := n.IterateFunc(item)
 		if err != nil {

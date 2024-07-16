@@ -1,6 +1,7 @@
 package workflow
 
 import (
+	"fmt"
 	"reflect"
 	"sync"
 
@@ -122,6 +123,77 @@ func (wm *WorkflowManager) LoadFromConfig(config *config.WorkflowConfig) error {
 				},
 				ParallelTasks: parallelTasks,
 			}
+		case "Foreach":
+			iterateFunc, ok := wm.tasks[nodeConfig.TaskFunc]
+			if !ok {
+				return errors.New("iterate function not found: " + nodeConfig.TaskFunc)
+			}
+			node = &ForeachNode{
+				Node: Node[interface{}]{
+					ID:   nodeConfig.ID,
+					Type: Foreach,
+				},
+				Collection:  nodeConfig.Collection,
+				IterateFunc: wrapTaskFunc(iterateFunc),
+			}
+		case "Branch":
+			branches := make([]NodeInterface, len(nodeConfig.ParallelTasks))
+			for i, branchID := range nodeConfig.ParallelTasks {
+				branchNode, ok := nodeMap[branchID]
+				if !ok {
+					return errors.New("branch node not found: " + branchID)
+				}
+				branches[i] = branchNode
+			}
+			node = &BranchNode{
+				Node: Node[interface{}]{
+					ID:   nodeConfig.ID,
+					Type: Branch,
+				},
+				Branches: branches,
+			}
+		case "Conditional":
+			conditionFunc, ok := wm.tasks[nodeConfig.TaskFunc]
+			if !ok {
+				return errors.New("condition function not found: " + nodeConfig.TaskFunc)
+			}
+			trueNext, ok := nodeMap[nodeConfig.TrueNext]
+			if !ok {
+				return errors.New("trueNext node not found: " + nodeConfig.TrueNext)
+			}
+			falseNext, ok := nodeMap[nodeConfig.FalseNext]
+			if !ok {
+				return errors.New("falseNext node not found: " + nodeConfig.FalseNext)
+			}
+			node = &ConditionalNode{
+				Node: Node[interface{}]{
+					ID:   nodeConfig.ID,
+					Type: Conditional,
+				},
+				Condition: func(data interface{}) bool {
+					result, err := wrapTaskFunc(conditionFunc)(data)
+					if err != nil {
+						return false
+					}
+					return result.(bool)
+				},
+				TrueNext:  trueNext,
+				FalseNext: falseNext,
+			}
+		case "SubDag":
+			subDag := &Graph{}
+			for _, subDagNodeID := range nodeConfig.SubDag {
+				subDagNode, ok := nodeMap[subDagNodeID]
+				if !ok {
+					return errors.New("subDag node not found: " + subDagNodeID)
+				}
+				subDag.Nodes = append(subDag.Nodes, subDagNode)
+			}
+			node = &Node[interface{}]{
+				ID:     nodeConfig.ID,
+				Type:   SubDag,
+				SubDag: subDag,
+			}
 		default:
 			return errors.New("unsupported node type: " + nodeConfig.Type)
 		}
@@ -200,7 +272,15 @@ func (wm *WorkflowManager) findNodeByID(id string) NodeInterface {
 
 func wrapTaskFunc(taskFunc interface{}) func(interface{}) (interface{}, error) {
 	return func(data interface{}) (interface{}, error) {
-		result := reflect.ValueOf(taskFunc).Call([]reflect.Value{reflect.ValueOf(data)})
+		taskFuncValue := reflect.ValueOf(taskFunc)
+		if taskFuncValue.Kind() != reflect.Func {
+			return nil, fmt.Errorf("taskFunc is not a function")
+		}
+		if taskFuncValue.Type().NumIn() != 1 || taskFuncValue.Type().NumOut() != 2 {
+			return nil, fmt.Errorf("taskFunc should have one input parameter and two output parameters")
+		}
+
+		result := taskFuncValue.Call([]reflect.Value{reflect.ValueOf(data)})
 		if len(result) == 2 && !result[1].IsNil() {
 			return result[0].Interface(), result[1].Interface().(error)
 		}

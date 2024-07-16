@@ -1,5 +1,9 @@
 package workflow
 
+import (
+	"fmt"
+)
+
 type Node[T any] struct {
 	ID            string
 	Type          NodeType
@@ -19,8 +23,12 @@ func (n *Node[T]) GetType() NodeType {
 }
 
 func (n *Node[T]) Execute(wm *WorkflowManager, data interface{}) (interface{}, error) {
+	typedData, ok := data.(T)
+	if !ok {
+		return nil, fmt.Errorf("invalid data type: expected %T, got %T", typedData, data)
+	}
+
 	var err error
-	typedData := data.(T)
 
 	if n.BeforeExecute != nil {
 		typedData, err = n.BeforeExecute(typedData)

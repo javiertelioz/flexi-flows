@@ -1,0 +1,29 @@
+{
+  "nodes": [
+    {
+      "id": "task1",
+      "type": "Task",
+      "taskFunc": "Task1"
+    },
+    {
+      "id": "task2",
+      "type": "Task",
+      "taskFunc": "Task2"
+    },
+    {
+      "id": "task3",
+      "type": "Task",
+      "taskFunc": "Task3"
+    }
+  ],
+  "edges": [
+    {
+      "from": "task1",
+      "to": "task2"
+    },
+    {
+      "from": "task2",
+      "to": "task3"
+    }
+  ]
+}
