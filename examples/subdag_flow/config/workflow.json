@@ -1,0 +1,37 @@
+{
+  "nodes": [
+    {
+      "id": "mainTask",
+      "type": "Task",
+      "taskFunc": "MainTask"
+    },
+    {
+      "id": "subtask1",
+      "type": "Task",
+      "taskFunc": "SubTask1"
+    },
+    {
+      "id": "subtask2",
+      "type": "Task",
+      "taskFunc": "SubTask2"
+    },
+    {
+      "id": "subdag",
+      "type": "SubDag",
+      "subDag": [
+        "subtask1",
+        "subtask2"
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "mainTask",
+      "to": "subdag"
+    },
+    {
+      "from": "subdag",
+      "to": "mainTask"
+    }
+  ]
+}

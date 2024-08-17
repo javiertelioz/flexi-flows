@@ -1,6 +1,6 @@
-module github.com/javiertelioz/go-flows
+module github.com/javiertelioz/flexi-flows
 
-go 1.22.4
+go 1.22
 
 require (
 	github.com/cucumber/godog v0.14.1

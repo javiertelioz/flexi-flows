@@ -3,8 +3,8 @@ package integration
 import (
 	"fmt"
 	"github.com/cucumber/godog"
-	"github.com/javiertelioz/go-flows/pkg/workflow"
-	"github.com/javiertelioz/go-flows/pkg/workflow/config"
+	"github.com/javiertelioz/flexi-flows/pkg/workflow"
+	"github.com/javiertelioz/flexi-flows/pkg/workflow/config"
 )
 
 var wm *workflow.WorkflowManager
@@ -92,21 +92,21 @@ func InitializeScenario(ctx *godog.ScenarioContext) {
 func InitializeTestSuite(ctx *godog.TestSuiteContext) {}
 
 func init() {
-	taskFuncs := map[string]interface{}{
-		"startFunc":    startFunc,
-		"checkFunc":    checkFunc,
-		"task1Func":    task1Func,
-		"task2Func":    task2Func,
-		"foreachFunc":  foreachFunc,
-		"subtask1Func": subtask1Func,
-		"subtask2Func": subtask2Func,
-		"endFunc":      endFunc,
-	}
-	hookFuncs := map[string]interface{}{
-		"beforeTask": beforeTask,
-		"afterTask":  afterTask,
-	}
-	wm = workflow.NewWorkflowManager(nil, taskFuncs, hookFuncs)
+
+	wm = workflow.NewWorkflowManager()
+
+	wm.RegisterTask("startFunc", startFunc)
+	wm.RegisterTask("checkFunc", checkFunc)
+	wm.RegisterTask("task1Func", task1Func)
+	wm.RegisterTask("task2Func", task2Func)
+	wm.RegisterTask("foreachFunc", foreachFunc)
+	wm.RegisterTask("subtask1Func", subtask1Func)
+	wm.RegisterTask("subtask2Func", subtask2Func)
+	wm.RegisterTask("endFunc", endFunc)
+
+	wm.RegisterHook("beforeTask", beforeTask)
+	wm.RegisterHook("afterTask", afterTask)
+
 }
 
 // Define the dummy functions

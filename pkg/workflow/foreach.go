@@ -14,7 +14,7 @@ func (n *ForeachNode) Execute(wm *WorkflowManager, data interface{}) (interface{
 		}
 	}
 	if len(n.Next) > 0 {
-		return wm.executeNode(n.Next[0], data)
+		return wm.ExecuteNode(n.Next[0], data)
 	}
 	return nil, nil
 }
