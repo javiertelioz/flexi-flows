@@ -1,0 +1,72 @@
+{
+  "nodes": [
+    {
+      "id": "task1",
+      "type": "Task",
+      "taskFunc": "Task1",
+      "afterExecute": "AfterTask1"
+    },
+    {
+      "id": "task2",
+      "type": "Task",
+      "taskFunc": "Task2",
+      "beforeExecute": "BeforeTask2"
+    },
+    {
+      "id": "subtask1",
+      "type": "Task",
+      "taskFunc": "SubTask1",
+      "beforeExecute": "BeforeSubTask1",
+      "afterExecute": "AfterSubTask1"
+    },
+    {
+      "id": "subtask2",
+      "type": "Task",
+      "taskFunc": "SubTask2"
+    },
+    {
+      "id": "subdag",
+      "type": "SubDag",
+      "subDag": [
+        "subtask1",
+        "subtask2"
+      ]
+    },
+    {
+      "id": "foreach1",
+      "type": "Foreach",
+      "taskFunc": "IterateFunc",
+      "collection": [1, 2, 3]
+    },
+    {
+      "id": "branch1",
+      "type": "Branch",
+      "branches": ["foreach1"]
+    },
+    {
+      "id": "conditional1",
+      "type": "Conditional",
+      "taskFunc": "ConditionFunc",
+      "trueNext": "subdag",
+      "falseNext": "task2"
+    }
+  ],
+  "edges": [
+    {
+      "from": "task1",
+      "to": "conditional1"
+    },
+    {
+      "from": "conditional1",
+      "to": "foreach1"
+    },
+    {
+      "from": "foreach1",
+      "to": "subdag"
+    },
+    {
+      "from": "subdag",
+      "to": "task2"
+    }
+  ]
+}

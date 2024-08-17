@@ -1,20 +1,8 @@
 package workflow
 
-type NodeType int
-
-const (
-	Task NodeType = iota
-	SubDag
-	Conditional
-	Foreach
-	Branch
+import (
+	"fmt"
 )
-
-type NodeInterface interface {
-	GetID() string
-	GetType() NodeType
-	Execute(wm *WorkflowManager, data interface{}) (interface{}, error)
-}
 
 type Node[T any] struct {
 	ID            string
@@ -35,8 +23,12 @@ func (n *Node[T]) GetType() NodeType {
 }
 
 func (n *Node[T]) Execute(wm *WorkflowManager, data interface{}) (interface{}, error) {
+	typedData, ok := data.(T)
+	if !ok {
+		return nil, fmt.Errorf("invalid data type: expected %T, got %T", typedData, data)
+	}
+
 	var err error
-	typedData := data.(T)
 
 	if n.BeforeExecute != nil {
 		typedData, err = n.BeforeExecute(typedData)
