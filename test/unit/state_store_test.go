@@ -1,7 +1,7 @@
 package unit
 
 import (
-	"github.com/javiertelioz/go-flows/pkg/workflow/storage"
+	"github.com/javiertelioz/flexi-flows/pkg/workflow/storage"
 	"os"
 	"testing"
 

@@ -3,8 +3,8 @@ package integration
 import (
 	"fmt"
 	"github.com/cucumber/godog"
-	"github.com/javiertelioz/go-flows/pkg/workflow"
-	"github.com/javiertelioz/go-flows/pkg/workflow/config"
+	"github.com/javiertelioz/flexi-flows/pkg/workflow"
+	"github.com/javiertelioz/flexi-flows/pkg/workflow/config"
 )
 
 var wm *workflow.WorkflowManager

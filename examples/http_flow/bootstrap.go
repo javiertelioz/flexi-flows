@@ -1,9 +1,9 @@
 package http_flow
 
 import (
-	"github.com/javiertelioz/go-flows/examples/http_flow/uses_cases"
-	"github.com/javiertelioz/go-flows/pkg/workflow"
-	"github.com/javiertelioz/go-flows/pkg/workflow/config"
+	"github.com/javiertelioz/flexi-flows/examples/http_flow/uses_cases"
+	"github.com/javiertelioz/flexi-flows/pkg/workflow"
+	"github.com/javiertelioz/flexi-flows/pkg/workflow/config"
 	"log"
 )
 

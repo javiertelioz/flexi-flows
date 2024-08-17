@@ -49,7 +49,8 @@ coverage: ## Generate and visualize a test coverage report in HTML format.
 	@go test -v -failfast -race -cover -covermode=atomic ./test/... -coverpkg=./pkg/... -coverprofile=coverage/coverage.out -shuffle=on > /dev/null
 	@go tool cover -func=coverage/coverage.out
 	@go tool cover -html=coverage/coverage.out -o coverage/coverage.html
-	@echo "🧪 Test coverage completed"
+	@echo "🧪 Test coverage completed.."
+	@echo "You can find coverage report at coverage/coverage.html"
 .PHONY: coverage
 
 linter: ## Run the golangci-lint on the project source code to detect style issues or errors.

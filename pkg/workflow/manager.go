@@ -7,8 +7,8 @@ import (
 
 	"errors"
 
-	"github.com/javiertelioz/go-flows/pkg/workflow/config"
-	"github.com/javiertelioz/go-flows/pkg/workflow/storage"
+	"github.com/javiertelioz/flexi-flows/pkg/workflow/config"
+	"github.com/javiertelioz/flexi-flows/pkg/workflow/storage"
 )
 
 type WorkflowManager struct {

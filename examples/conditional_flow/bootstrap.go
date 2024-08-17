@@ -3,10 +3,10 @@ package conditional_flow
 import (
 	"log"
 
-	"github.com/javiertelioz/go-flows/pkg/workflow"
-	"github.com/javiertelioz/go-flows/pkg/workflow/config"
+	"github.com/javiertelioz/flexi-flows/pkg/workflow"
+	"github.com/javiertelioz/flexi-flows/pkg/workflow/config"
 
-	"github.com/javiertelioz/go-flows/examples/conditional_flow/uses_cases"
+	"github.com/javiertelioz/flexi-flows/examples/conditional_flow/uses_cases"
 )
 
 func ConditionalFlow() {

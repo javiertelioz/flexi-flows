@@ -1,7 +1,7 @@
 package unit
 
 import (
-	"github.com/javiertelioz/go-flows/pkg/workflow/comment"
+	"github.com/javiertelioz/flexi-flows/pkg/workflow/comment"
 	"os"
 	"path/filepath"
 	"testing"

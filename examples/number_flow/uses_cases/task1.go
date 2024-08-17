@@ -20,6 +20,7 @@ func Task1(start string) (string, error) {
 // @type: post-hook
 // @after Task1
 // @description Execute after Task 1.
-func AfterTask1() {
+func AfterTask1(start string) (string, error) {
 	fmt.Println("Finished Task 1")
+	return start, nil
 }

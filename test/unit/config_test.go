@@ -5,7 +5,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/javiertelioz/go-flows/pkg/workflow/config"
+	"github.com/javiertelioz/flexi-flows/pkg/workflow/config"
 	"github.com/stretchr/testify/suite"
 	"gopkg.in/yaml.v3"
 )

@@ -1,14 +1,14 @@
 package main
 
-import "github.com/javiertelioz/go-flows/examples/subdag_flow"
+import "github.com/javiertelioz/flexi-flows/examples/http_flow"
 
 func main() {
-	//http_flow.HttpFlow()
+	http_flow.HttpFlow()
 	//task_flow.TaskFlow()
 	//conditional_flow.ConditionalFlow()
 	//foreach_flow.ForeachFlow()
 	//branch_flow.BranchFlow()
-	subdag_flow.SubDagFlow()
+	//subdag_flow.SubDagFlow()
 	//number_flow.NumberFlow()
 
 	/*srcDir := "./examples"

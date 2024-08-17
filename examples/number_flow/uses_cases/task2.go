@@ -19,6 +19,8 @@ func Task2(data interface{}) (interface{}, error) {
 // @type: pre-hook
 // @before Task2
 // @description Execute before Task 2.
-func BeforeTask2() {
+func BeforeTask2(data interface{}) (interface{}, error) {
 	fmt.Println("Starting task 2")
+	fmt.Println("Executing Before Task 2", data)
+	return "data", nil
 }
