@@ -1,7 +1,7 @@
 package workflow
 
-type NodeInterface interface {
+type NodeInterface[T any] interface {
 	GetID() string
 	GetType() NodeType
-	Execute(wm *WorkflowManager, data interface{}) (interface{}, error)
+	Execute(wm *WorkflowManager[T], data T) (T, error)
 }

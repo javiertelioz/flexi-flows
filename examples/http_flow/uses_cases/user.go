@@ -2,11 +2,12 @@ package use_cases
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
+	"log"
 	"net/http"
 )
 
+// User represents user information.
 type User struct {
 	ID       int     `json:"id"`
 	Name     string  `json:"name"`
@@ -16,6 +17,7 @@ type User struct {
 	Address  Address `json:"address"`
 }
 
+// Address represents user address.
 type Address struct {
 	Street string `json:"street"`
 	City   string `json:"city"`
@@ -29,9 +31,14 @@ type Address struct {
 //
 // @output User: Returns user information.
 // @output error: Returns an error if user no exist.
-func GetUserFunc(userID int) (*User, error) {
-	if userID == 0 {
-		return nil, errors.New("error to retrieve user")
+func GetUserFunc(data any) (any, error) {
+	userID, ok := data.(int)
+	if !ok {
+		return nil, fmt.Errorf("GetUserFunc expects data of type int, got %T", data)
+	}
+
+	if userID <= 0 {
+		return nil, fmt.Errorf("invalid user ID: %d", userID)
 	}
 
 	url := fmt.Sprintf("https://jsonplaceholder.typicode.com/users/%d", userID)
@@ -49,6 +56,6 @@ func GetUserFunc(userID int) (*User, error) {
 
 	userToJson, _ := json.MarshalIndent(&user, "", "  ")
 
-	fmt.Printf("User Information: %s\n", string(userToJson))
+	log.Printf("User Information: %s", string(userToJson))
 	return &user, nil
 }

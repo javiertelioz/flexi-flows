@@ -1,6 +1,9 @@
 package use_cases
 
-import "fmt"
+import (
+	"fmt"
+	"log"
+)
 
 // SumFunc
 // @type: task
@@ -10,14 +13,26 @@ import "fmt"
 //
 // @output int: Returns the sum of the results.
 // @output error: Returns an error if occurs.
-func SumFunc(data []interface{}) (int, error) {
-	isPrime := data[0].(bool)
-	square := data[1].(int)
+func SumFunc(data any) (any, error) {
+	results, ok := data.(map[string]any)
+	if !ok {
+		return nil, fmt.Errorf("SumFunc expects data of type map[string]interface{}, got %T", data)
+	}
+
+	isPrime, ok := results["isPrime"].(bool)
+	if !ok {
+		return nil, fmt.Errorf("isPrime result not found or invalid type")
+	}
+	square, ok := results["square"].(int)
+	if !ok {
+		return nil, fmt.Errorf("square result not found or invalid type")
+	}
+
 	sum := square
 	if isPrime {
 		sum += 1
 	}
-	fmt.Printf("Sum of results: %d (Prime: %v, Square: %d)\n", sum, isPrime, square)
+	log.Printf("Sum of results: %d (Prime: %v, Square: %d)", sum, isPrime, square)
 	return sum, nil
 }
 
@@ -30,8 +45,8 @@ func SumFunc(data []interface{}) (int, error) {
 //
 // @output []interface{}: Returns data to be summed.
 // @output error: Returns an error if occurs.
-func BeforeSum(data []interface{}) ([]interface{}, error) {
-	fmt.Println("Before sum: received data", data)
+func BeforeSum(data any) (any, error) {
+	log.Printf("Before sum: received data %v", data)
 	return data, nil
 }
 
@@ -43,9 +58,12 @@ func BeforeSum(data []interface{}) ([]interface{}, error) {
 // @input result (int): The result of the SumFunc.
 //
 // @output AfterSumResult: Returns the result after post-processing.
-// @output error: Returns an error if occurs.
-func AfterSum(result int) (int, error) {
-	result = result - 19
-	fmt.Printf("After sum result is: %d\n", result)
-	return result, nil
+func AfterSum(result any) (any, error) {
+	sum, ok := result.(int)
+	if !ok {
+		return nil, fmt.Errorf("AfterSum expects result of type int, got %T", result)
+	}
+	sum = sum - 19
+	log.Printf("After sum result is: %d", sum)
+	return sum, nil
 }

@@ -1,6 +1,9 @@
 package use_cases
 
-import "fmt"
+import (
+	"fmt"
+	"log"
+)
 
 // SquareFunc
 // @type: task
@@ -10,8 +13,12 @@ import "fmt"
 //
 // @output int: Returns the square of the input integer.
 // @output error: Returns an error if occurs.
-func SquareFunc(data int) (int, error) {
-	return data * data, nil
+func SquareFunc(data any) (any, error) {
+	number, ok := data.(int)
+	if !ok {
+		return nil, fmt.Errorf("SquareFunc expects data of type int, got %T", data)
+	}
+	return number * number, nil
 }
 
 // BeforeSquare
@@ -23,8 +30,12 @@ func SquareFunc(data int) (int, error) {
 //
 // @output int: Returns integer to be squared.
 // @output error: Returns an error if occurs.
-func BeforeSquare(data int) (int, error) {
-	fmt.Println("Before square: received data", data)
+func BeforeSquare(data any) (any, error) {
+	number, ok := data.(int)
+	if !ok {
+		return nil, fmt.Errorf("BeforeSquare expects data of type int, got %T", data)
+	}
+	log.Printf("Before square: received data %d", number)
 	return data, nil
 }
 
@@ -37,7 +48,11 @@ func BeforeSquare(data int) (int, error) {
 //
 // @output int: Returns the result after post-processing.
 // @output error: Returns an error if occurs.
-func AfterSquare(result int) (int, error) {
-	fmt.Println("After square: result is", result)
+func AfterSquare(result any) (any, error) {
+	square, ok := result.(int)
+	if !ok {
+		return nil, fmt.Errorf("AfterSquare expects result of type int, got %T", result)
+	}
+	log.Printf("After square: result is %d", square)
 	return result, nil
 }

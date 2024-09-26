@@ -8,4 +8,5 @@ const (
 	Conditional
 	Foreach
 	Branch
+	Parallel
 )

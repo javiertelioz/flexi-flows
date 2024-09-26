@@ -4,30 +4,27 @@ import (
 	"sync"
 )
 
-type MemoryStateStore struct {
-	state map[string]interface{}
+type MemoryStateStore[T any] struct {
+	state map[string]T
 	mu    sync.Mutex
 }
 
-func NewMemoryStateStore() *MemoryStateStore {
-	return &MemoryStateStore{
-		state: make(map[string]interface{}),
+func NewMemoryStateStore[T any]() *MemoryStateStore[T] {
+	return &MemoryStateStore[T]{
+		state: make(map[string]T),
 	}
 }
 
-func (s *MemoryStateStore) SaveState(nodeID string, data interface{}) error {
+func (s *MemoryStateStore[T]) SaveState(nodeID string, data T) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.state[nodeID] = data
 	return nil
 }
 
-func (s *MemoryStateStore) LoadState(nodeID string) (interface{}, error) {
+func (s *MemoryStateStore[T]) LoadState(nodeID string) (T, bool, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	data, exists := s.state[nodeID]
-	if !exists {
-		return nil, nil
-	}
-	return data, nil
+	return data, exists, nil
 }

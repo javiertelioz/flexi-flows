@@ -1,6 +1,12 @@
 {
   "nodes": [
     {
+      "id": "foreachNode",
+      "type": "Foreach",
+      "taskFunc": "iterateFunc",
+      "executionMode": "synchronous"
+    },
+    {
       "id": "isPrime",
       "type": "Task",
       "taskFunc": "isPrimeFunc",
@@ -33,6 +39,10 @@
     }
   ],
   "edges": [
+    {
+      "from": "foreachNode",
+      "to": "parallel"
+    },
     {
       "from": "parallel",
       "to": "sum"

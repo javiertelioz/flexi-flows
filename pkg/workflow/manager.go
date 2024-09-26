@@ -1,217 +1,230 @@
 package workflow
 
 import (
-	"fmt"
-	"reflect"
-	"sync"
-
 	"errors"
+	"fmt"
+	"sync"
 
 	"github.com/javiertelioz/flexi-flows/pkg/workflow/config"
 	"github.com/javiertelioz/flexi-flows/pkg/workflow/storage"
 )
 
-type WorkflowManager struct {
-	graph      *Graph
-	stateStore storage.StateStore
+type WorkflowManager[T any] struct {
+	graph      *Graph[T]
+	stateStore storage.StateStore[T]
 	mu         sync.Mutex
-	tasks      map[string]interface{}
-	hooks      map[string]interface{}
+	tasks      map[string]func(T) (T, error)
+	hooks      map[string]func(T) (T, error)
 }
 
-func NewWorkflowManager() *WorkflowManager {
-	return &WorkflowManager{
-		graph: &Graph{},
-		tasks: make(map[string]interface{}),
-		hooks: make(map[string]interface{}),
+func NewWorkflowManager[T any]() *WorkflowManager[T] {
+	return &WorkflowManager[T]{
+		graph: &Graph[T]{},
+		tasks: make(map[string]func(T) (T, error)),
+		hooks: make(map[string]func(T) (T, error)),
 	}
 }
 
-func (wm *WorkflowManager) RegisterStateStore(store storage.StateStore) {
+func (wm *WorkflowManager[T]) RegisterStateStore(store storage.StateStore[T]) {
 	wm.mu.Lock()
 	defer wm.mu.Unlock()
 	wm.stateStore = store
 }
 
-func (wm *WorkflowManager) RegisterTask(name string, taskFunc interface{}) {
+func (wm *WorkflowManager[T]) RegisterTask(name string, taskFunc func(T) (T, error)) {
 	wm.mu.Lock()
 	defer wm.mu.Unlock()
 	wm.tasks[name] = taskFunc
 }
 
-func (wm *WorkflowManager) UnregisterTask(name string) {
+func (wm *WorkflowManager[T]) UnregisterTask(name string) {
 	wm.mu.Lock()
 	defer wm.mu.Unlock()
 	delete(wm.tasks, name)
 }
 
-func (wm *WorkflowManager) RegisterHook(name string, hookFunc interface{}) {
+func (wm *WorkflowManager[T]) RegisterHook(name string, hookFunc func(T) (T, error)) {
 	wm.mu.Lock()
 	defer wm.mu.Unlock()
 	wm.hooks[name] = hookFunc
 }
 
-func (wm *WorkflowManager) UnregisterHook(name string) {
+func (wm *WorkflowManager[T]) UnregisterHook(name string) {
 	wm.mu.Lock()
 	defer wm.mu.Unlock()
 	delete(wm.hooks, name)
 }
 
-func (wm *WorkflowManager) AddNode(node NodeInterface) {
-	wm.mu.Lock()
-	defer wm.mu.Unlock()
+func (wm *WorkflowManager[T]) AddNode(node NodeInterface[T]) {
 	wm.graph.Nodes = append(wm.graph.Nodes, node)
 }
 
-func (wm *WorkflowManager) AddEdge(edge *Edge) {
-	wm.mu.Lock()
-	defer wm.mu.Unlock()
+func (wm *WorkflowManager[T]) AddEdge(edge *Edge[T]) {
 	wm.graph.Edges = append(wm.graph.Edges, edge)
 }
 
-func (wm *WorkflowManager) Execute(startNodeID string, initialData interface{}) error {
-	wm.mu.Lock()
-	defer wm.mu.Unlock()
-
+func (wm *WorkflowManager[T]) Execute(startNodeID string, initialData T) (T, error) {
 	startNode := wm.findNodeByID(startNodeID)
 	if startNode == nil {
-		return errors.New("start node not found")
+		return initialData, fmt.Errorf("start node not found with ID '%s'", startNodeID)
 	}
 
-	_, err := wm.ExecuteNode(startNode, initialData)
-	return err
+	return wm.ExecuteNode(startNode, initialData)
 }
 
-func (wm *WorkflowManager) LoadFromConfig(config *config.WorkflowConfig) error {
-	nodeMap := make(map[string]NodeInterface)
+func (wm *WorkflowManager[T]) LoadFromConfig(config *config.WorkflowConfig) error {
+	nodeMap := make(map[string]NodeInterface[T])
 
+	// First, create all nodes
 	for _, nodeConfig := range config.Nodes {
-		var node NodeInterface
+		var node NodeInterface[T]
 		switch nodeConfig.Type {
 		case "Task":
 			taskFunc, ok := wm.tasks[nodeConfig.TaskFunc]
 			if !ok {
-				return errors.New("tasks function not found: " + nodeConfig.TaskFunc)
+				return fmt.Errorf("task function not registered: %s", nodeConfig.TaskFunc)
 			}
-			var beforeFunc, afterFunc func(interface{}) (interface{}, error)
+
+			var beforeFunc, afterFunc func(T) (T, error)
 			if nodeConfig.BeforeExecute != "" {
-				beforeFunc = wrapHookFunc(wm.hooks[nodeConfig.BeforeExecute])
+				beforeFunc, ok = wm.hooks[nodeConfig.BeforeExecute]
+				if !ok {
+					return fmt.Errorf("before hook not registered: %s", nodeConfig.BeforeExecute)
+				}
 			}
 			if nodeConfig.AfterExecute != "" {
-				afterFunc = wrapHookFunc(wm.hooks[nodeConfig.AfterExecute])
+				afterFunc, ok = wm.hooks[nodeConfig.AfterExecute]
+				if !ok {
+					return fmt.Errorf("after hook not registered: %s", nodeConfig.AfterExecute)
+				}
 			}
-			node = &Node[interface{}]{
+
+			node = &Node[T]{
 				ID:            nodeConfig.ID,
 				Type:          Task,
-				TaskFunc:      wrapTaskFunc(taskFunc),
+				TaskFunc:      taskFunc,
 				BeforeExecute: beforeFunc,
 				AfterExecute:  afterFunc,
 			}
+
 		case "Parallel":
-			parallelTasks := make([]NodeInterface, len(nodeConfig.ParallelTasks))
-			for i, taskID := range nodeConfig.ParallelTasks {
-				taskNode, ok := nodeMap[taskID]
-				if !ok {
-					return errors.New("tasks node not found: " + taskID)
-				}
-				parallelTasks[i] = taskNode
+			node = &ParallelNode[T]{
+				Node: Node[T]{
+					ID:   nodeConfig.ID,
+					Type: Parallel,
+				},
+				// ParallelTasks will be assigned after all nodes are created
 			}
-			node = &ParallelNode{
-				Node: Node[interface{}]{
+
+		case "Branch":
+			node = &BranchNode[T]{
+				Node: Node[T]{
 					ID:   nodeConfig.ID,
 					Type: Branch,
 				},
-				ParallelTasks: parallelTasks,
+				// Branches will be assigned after all nodes are created
 			}
+
 		case "Foreach":
-			iterateFunc, ok := wm.tasks[nodeConfig.TaskFunc]
+			taskFunc, ok := wm.tasks[nodeConfig.TaskFunc]
 			if !ok {
-				return errors.New("iterate function not found: " + nodeConfig.TaskFunc)
+				return fmt.Errorf("iterate function not registered: %s", nodeConfig.TaskFunc)
 			}
-			node = &ForeachNode{
-				Node: Node[interface{}]{
+			executionMode := Asynchronous
+			if nodeConfig.ExecutionMode != "" {
+				if nodeConfig.ExecutionMode == string(Synchronous) {
+					executionMode = Synchronous
+				} else if nodeConfig.ExecutionMode == string(Asynchronous) {
+					executionMode = Asynchronous
+				} else {
+					return fmt.Errorf("invalid execution mode for ForeachNode: %s", nodeConfig.ExecutionMode)
+				}
+			}
+			node = &ForeachNode[T]{
+				Node: Node[T]{
 					ID:   nodeConfig.ID,
 					Type: Foreach,
 				},
-				Collection:  nodeConfig.Collection,
-				IterateFunc: wrapTaskFunc(iterateFunc),
+				IterateFunc:   taskFunc,
+				ExecutionMode: executionMode,
 			}
-		case "Branch":
-			branches := make([]NodeInterface, len(nodeConfig.ParallelTasks))
-			for i, branchID := range nodeConfig.ParallelTasks {
-				branchNode, ok := nodeMap[branchID]
-				if !ok {
-					return errors.New("branch node not found: " + branchID)
-				}
-				branches[i] = branchNode
-			}
-			node = &BranchNode{
-				Node: Node[interface{}]{
-					ID:   nodeConfig.ID,
-					Type: Branch,
-				},
-				Branches: branches,
-			}
+
 		case "Conditional":
-			conditionFunc, ok := wm.tasks[nodeConfig.TaskFunc]
+			taskFunc, ok := wm.tasks[nodeConfig.TaskFunc]
 			if !ok {
-				return errors.New("condition function not found: " + nodeConfig.TaskFunc)
+				return fmt.Errorf("condition function not registered: %s", nodeConfig.TaskFunc)
 			}
-			trueNext, ok := nodeMap[nodeConfig.TrueNext]
-			if !ok {
-				return errors.New("trueNext node not found: " + nodeConfig.TrueNext)
-			}
-			falseNext, ok := nodeMap[nodeConfig.FalseNext]
-			if !ok {
-				return errors.New("falseNext node not found: " + nodeConfig.FalseNext)
-			}
-			node = &ConditionalNode{
-				Node: Node[interface{}]{
+			node = &ConditionalNode[T]{
+				Node: Node[T]{
 					ID:   nodeConfig.ID,
 					Type: Conditional,
 				},
-				Condition: func(data interface{}) bool {
-					result, err := wrapTaskFunc(conditionFunc)(data)
-					if err != nil {
-						return false
-					}
-					return result.(bool)
-				},
-				TrueNext:  trueNext,
-				FalseNext: falseNext,
+				ConditionFunc: taskFunc,
 			}
-		case "SubDag":
-			subDag := &Graph{}
-			for _, subDagNodeID := range nodeConfig.SubDag {
-				subDagNode, ok := nodeMap[subDagNodeID]
-				if !ok {
-					return errors.New("subDag node not found: " + subDagNodeID)
-				}
-				subDag.Nodes = append(subDag.Nodes, subDagNode)
-			}
-			node = &Node[interface{}]{
-				ID:     nodeConfig.ID,
-				Type:   SubDag,
-				SubDag: subDag,
-			}
+
 		default:
-			return errors.New("unsupported node type: " + nodeConfig.Type)
+			return fmt.Errorf("unsupported node type: %s", nodeConfig.Type)
 		}
 
 		nodeMap[nodeConfig.ID] = node
+	}
+
+	// Now, set up connections and references
+	for _, nodeConfig := range config.Nodes {
+		node := nodeMap[nodeConfig.ID]
+		switch n := node.(type) {
+		case *ParallelNode[T]:
+			parallelTasks := make([]NodeInterface[T], len(nodeConfig.ParallelTasks))
+			for i, taskID := range nodeConfig.ParallelTasks {
+				taskNode, ok := nodeMap[taskID]
+				if !ok {
+					return fmt.Errorf("parallel task node not found: %s", taskID)
+				}
+				parallelTasks[i] = taskNode
+			}
+			n.ParallelTasks = parallelTasks
+
+		case *BranchNode[T]:
+			branches := make([]NodeInterface[T], len(nodeConfig.Branches))
+			for i, branchID := range nodeConfig.Branches {
+				branchNode, ok := nodeMap[branchID]
+				if !ok {
+					return fmt.Errorf("branch node not found: %s", branchID)
+				}
+				branches[i] = branchNode
+			}
+			n.Branches = branches
+
+		case *ConditionalNode[T]:
+			trueNext, ok := nodeMap[nodeConfig.TrueNext]
+			if !ok {
+				return fmt.Errorf("trueNext node not found: %s", nodeConfig.TrueNext)
+			}
+			falseNext, ok := nodeMap[nodeConfig.FalseNext]
+			if !ok {
+				return fmt.Errorf("falseNext node not found: %s", nodeConfig.FalseNext)
+			}
+			n.TrueNext = trueNext
+			n.FalseNext = falseNext
+		}
+	}
+
+	// Add nodes to the graph
+	for _, node := range nodeMap {
 		wm.AddNode(node)
 	}
 
+	// Add edges
 	for _, edgeConfig := range config.Edges {
 		fromNode, ok := nodeMap[edgeConfig.From]
 		if !ok {
-			return errors.New("from node not found: " + edgeConfig.From)
+			return fmt.Errorf("from node not found: %s", edgeConfig.From)
 		}
 		toNode, ok := nodeMap[edgeConfig.To]
 		if !ok {
-			return errors.New("to node not found: " + edgeConfig.To)
+			return fmt.Errorf("to node not found: %s", edgeConfig.To)
 		}
-		wm.AddEdge(&Edge{
+		wm.AddEdge(&Edge[T]{
 			From: fromNode,
 			To:   toNode,
 		})
@@ -220,33 +233,36 @@ func (wm *WorkflowManager) LoadFromConfig(config *config.WorkflowConfig) error {
 	return nil
 }
 
-func (wm *WorkflowManager) ExecuteNode(node NodeInterface, data interface{}) (interface{}, error) {
+func (wm *WorkflowManager[T]) ExecuteNode(node NodeInterface[T], data T) (T, error) {
 	if node == nil {
-		return nil, errors.New("node is nil")
+		return data, errors.New("ExecuteNode: node is nil")
 	}
 
+	// Load state if exists
 	if wm.stateStore != nil {
-		state, err := wm.stateStore.LoadState(node.GetID())
+		state, exists, err := wm.stateStore.LoadState(node.GetID())
 		if err != nil {
-			return nil, err
+			return data, err
 		}
-		if state != nil {
+		if exists {
 			data = state
 		}
 	}
 
 	result, err := node.Execute(wm, data)
 	if err != nil {
-		return nil, err
+		return result, err
 	}
 
+	// Save state
 	if wm.stateStore != nil {
 		err = wm.stateStore.SaveState(node.GetID(), result)
 		if err != nil {
-			return nil, err
+			return result, err
 		}
 	}
 
+	// Execute next nodes
 	for _, edge := range wm.graph.Edges {
 		if edge.From.GetID() == node.GetID() {
 			if edge.To == nil {
@@ -261,39 +277,11 @@ func (wm *WorkflowManager) ExecuteNode(node NodeInterface, data interface{}) (in
 	return result, nil
 }
 
-func (wm *WorkflowManager) findNodeByID(id string) NodeInterface {
+func (wm *WorkflowManager[T]) findNodeByID(id string) NodeInterface[T] {
 	for _, node := range wm.graph.Nodes {
 		if node.GetID() == id {
 			return node
 		}
 	}
 	return nil
-}
-
-func wrapTaskFunc(taskFunc interface{}) func(interface{}) (interface{}, error) {
-	return func(data interface{}) (interface{}, error) {
-		taskFuncValue := reflect.ValueOf(taskFunc)
-		if taskFuncValue.Kind() != reflect.Func {
-			return nil, fmt.Errorf("taskFunc is not a function")
-		}
-		if taskFuncValue.Type().NumIn() != 1 || taskFuncValue.Type().NumOut() != 2 {
-			return nil, fmt.Errorf("taskFunc should have one input parameter and two output parameters")
-		}
-
-		result := taskFuncValue.Call([]reflect.Value{reflect.ValueOf(data)})
-		if len(result) == 2 && !result[1].IsNil() {
-			return result[0].Interface(), result[1].Interface().(error)
-		}
-		return result[0].Interface(), nil
-	}
-}
-
-func wrapHookFunc(hookFunc interface{}) func(interface{}) (interface{}, error) {
-	return func(data interface{}) (interface{}, error) {
-		result := reflect.ValueOf(hookFunc).Call([]reflect.Value{reflect.ValueOf(data)})
-		if len(result) == 2 && !result[1].IsNil() {
-			return result[0].Interface(), result[1].Interface().(error)
-		}
-		return result[0].Interface(), nil
-	}
 }

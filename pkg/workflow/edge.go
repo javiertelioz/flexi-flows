@@ -1,7 +1,7 @@
 package workflow
 
-type Edge struct {
-	From      NodeInterface
-	To        NodeInterface
+type Edge[T any] struct {
+	From      NodeInterface[T]
+	To        NodeInterface[T]
 	Condition func() bool
 }

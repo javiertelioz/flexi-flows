@@ -1,6 +1,6 @@
 package workflow
 
-type Graph struct {
-	Nodes []NodeInterface
-	Edges []*Edge
+type Graph[T any] struct {
+	Nodes []NodeInterface[T]
+	Edges []*Edge[T]
 }

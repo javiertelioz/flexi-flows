@@ -1,12 +1,11 @@
 package config
 
 import (
+	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
 	"strings"
-
-	"encoding/json"
 
 	"gopkg.in/yaml.v3"
 )
@@ -18,7 +17,6 @@ const (
 )
 
 func LoadConfig(filePath string) (*WorkflowConfig, error) {
-
 	fileType := strings.ToLower(
 		strings.TrimPrefix(filepath.Ext(filePath), "."),
 	)

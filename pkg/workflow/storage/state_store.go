@@ -1,6 +1,6 @@
 package storage
 
-type StateStore interface {
-	SaveState(nodeID string, data interface{}) error
-	LoadState(nodeID string) (interface{}, error)
+type StateStore[T any] interface {
+	SaveState(nodeID string, data T) error
+	LoadState(nodeID string) (T, bool, error)
 }

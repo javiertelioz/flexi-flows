@@ -8,8 +8,8 @@ type Node[T any] struct {
 	ID            string
 	Type          NodeType
 	TaskFunc      func(T) (T, error)
-	SubDag        *Graph
-	Next          []NodeInterface
+	SubDag        *Graph[T]
+	Next          []NodeInterface[T]
 	BeforeExecute func(T) (T, error)
 	AfterExecute  func(T) (T, error)
 }
@@ -22,34 +22,45 @@ func (n *Node[T]) GetType() NodeType {
 	return n.Type
 }
 
-func (n *Node[T]) Execute(wm *WorkflowManager, data interface{}) (interface{}, error) {
-	typedData, ok := data.(T)
-	if !ok {
-		return nil, fmt.Errorf("invalid data type: expected %T, got %T", typedData, data)
-	}
-
+func (n *Node[T]) Execute(wm *WorkflowManager[T], data T) (T, error) {
 	var err error
 
+	// Input data validation
+	if any(data) == nil {
+		return data, fmt.Errorf("input data is nil for node %s", n.ID)
+	}
+
+	// Execute before hook if available
 	if n.BeforeExecute != nil {
-		typedData, err = n.BeforeExecute(typedData)
+		data, err = n.BeforeExecute(data)
 		if err != nil {
-			return nil, err
+			return data, err
 		}
 	}
 
 	var result T
+
+	// Execute main task function if available
 	if n.TaskFunc != nil {
-		result, err = n.TaskFunc(typedData)
+		result, err = n.TaskFunc(data)
 		if err != nil {
-			return nil, err
+			return result, err
 		}
+	} else {
+		result = data
 	}
 
+	// Execute after hook if available
 	if n.AfterExecute != nil {
 		result, err = n.AfterExecute(result)
 		if err != nil {
-			return nil, err
+			return result, err
 		}
+	}
+
+	// If there is a next node, execute it with the current result
+	if len(n.Next) > 0 {
+		return wm.ExecuteNode(n.Next[0], result)
 	}
 
 	return result, nil
