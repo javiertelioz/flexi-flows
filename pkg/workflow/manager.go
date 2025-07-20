@@ -128,12 +128,22 @@ func (wm *WorkflowManager) LoadFromConfig(config *config.WorkflowConfig) error {
 			if !ok {
 				return errors.New("iterate function not found: " + nodeConfig.TaskFunc)
 			}
+
+			// Usar CollectionArray para compatibilidad, o convertir Collection si es necesario
+			var collection []interface{}
+			if len(nodeConfig.CollectionArray) > 0 {
+				collection = nodeConfig.CollectionArray
+			} else {
+				// Para casos futuros, podríamos resolver nodeConfig.Collection en tiempo de ejecución
+				collection = []interface{}{} // Por ahora, array vacío
+			}
+
 			node = &ForeachNode{
 				Node: Node[interface{}]{
 					ID:   nodeConfig.ID,
 					Type: Foreach,
 				},
-				Collection:  nodeConfig.Collection,
+				Collection:  collection,
 				IterateFunc: wrapTaskFunc(iterateFunc),
 			}
 		case "Branch":

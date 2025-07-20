@@ -1,62 +1,9 @@
-linters-settings:
-  dupl:
-    threshold: 100
-  wsl:
-    checks:
-      if-assignment-cuddling: false
-  errorlint:
-    errorf: true
-  errcheck:
-    check-type-assertions: true
-    check-blank: true
-  exhaustive:
-    check-generated: false
-    default-signifies-exhaustive: false
-  funlen:
-    lines: 65
-    statements: 40
-  gocognit:
-    min-complexity: 15
-  gocyclo:
-    min-complexity: 10
-  goconst:
-    min-len: 2
-    min-occurrences: 2
-  gocritic:
-    enabled-tags:
-      - diagnostic
-      - experimental
-      - opinionated
-      - performance
-      - style
-    disabled-checks:
-      - dupImport
-      - unnecessaryBlock
-  gofumpt:
-    extra-rules: true
-  govet:
-    enable-all: true
-  misspell:
-    locale: US
-  nestif:
-    min-complexity: 4
-  nolintlint:
-    require-explanation: true
-    require-specific: true
-  depguard:
-    rules:
-      main:
-        allow:
-          - golang.org/x/text/cases
-          - golang.org/x/text/language
-          - github.com/stretchr/testify/mock
-          - github.com/stretchr/testify/suite
-          - github.com/javiertelioz/workflows/pkg/
-          - github.com/javiertelioz/workflows/config
-          - github.com/javiertelioz/workflows/test/mocks
-
+version: "2"
+run:
+  go: "1.24"
+  issues-exit-code: 1
 linters:
-  disable-all: true
+  default: none
   enable:
     - asciicheck
     - bodyclose
@@ -65,13 +12,12 @@ linters:
     - dogsled
     - dupl
     - durationcheck
+    - err113
     - errcheck
     - errorlint
     - exhaustive
-    - exportloopref
     - forbidigo
     - funlen
-    - gci
     - gochecknoglobals
     - gochecknoinits
     - gocognit
@@ -80,19 +26,14 @@ linters:
     - gocyclo
     - godot
     - godox
-    - err113
-    - gofmt
-    - gofumpt
-    - goimports
-    - mnd
     - gomodguard
     - goprintffuncname
     - gosec
-    - gosimple
     - govet
     - ineffassign
     - makezero
     - misspell
+    - mnd
     - nakedret
     - nestif
     - nlreturn
@@ -104,36 +45,98 @@ linters:
     - rowserrcheck
     - sqlclosecheck
     - staticcheck
-    - stylecheck
-    - tparallel
     - thelper
-    - typecheck
+    - tparallel
     - unconvert
     - unparam
     - unused
-    - wsl
     - whitespace
-
-issues:
-  exclude-dirs:
-    - docs
-    - test
-  exclude-rules:
-    - path: integration-test
-      linters:
-        - paralleltest
-        - godot
-    - path: internal/controller/http
-      linters:
-        - godot
-
-run:
-  go: "1.22"
-  timeout: 5m
-  output: line-number
-  issues-exit-code: 1
-  max-issues-per-linter: 100
-  max-same-issues: 3
-
-tests:
-  golangci-lint: "run"
+    - wsl
+  settings:
+    depguard:
+      rules:
+        main:
+          allow:
+            - golang.org/x/text/cases
+            - golang.org/x/text/language
+            - github.com/stretchr/testify/mock
+            - github.com/stretchr/testify/suite
+            - github.com/javiertelioz/workflows/pkg/
+            - github.com/javiertelioz/workflows/config
+            - github.com/javiertelioz/workflows/test/mocks
+    dupl:
+      threshold: 100
+    errcheck:
+      check-type-assertions: true
+      check-blank: true
+    errorlint:
+      errorf: true
+    exhaustive:
+      default-signifies-exhaustive: false
+    funlen:
+      lines: 65
+      statements: 40
+    gocognit:
+      min-complexity: 15
+    goconst:
+      min-len: 2
+      min-occurrences: 2
+    gocritic:
+      disabled-checks:
+        - dupImport
+        - unnecessaryBlock
+      enabled-tags:
+        - diagnostic
+        - experimental
+        - opinionated
+        - performance
+        - style
+    gocyclo:
+      min-complexity: 10
+    govet:
+      enable-all: true
+    misspell:
+      locale: US
+    nestif:
+      min-complexity: 4
+    nolintlint:
+      require-explanation: true
+      require-specific: true
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - linters:
+          - godot
+          - paralleltest
+        path: integration-test
+      - linters:
+          - godot
+        path: internal/controller/http
+    paths:
+      - docs
+      - test
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  enable:
+    - gci
+    - gofmt
+    - gofumpt
+    - goimports
+  settings:
+    gofumpt:
+      extra-rules: true
+  exclusions:
+    generated: lax
+    paths:
+      - docs
+      - test
+      - third_party$
+      - builtin$
+      - examples$
