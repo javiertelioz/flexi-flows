@@ -88,6 +88,7 @@ const (
 type WorkflowError struct {
 	NodeID    string                 `json:"node_id"`
 	NodeType  NodeType               `json:"node_type"`
+	Type      string                 `json:"type,omitempty"` // Campo Type que estaba faltando
 	Message   string                 `json:"message"`
 	Timestamp time.Time              `json:"timestamp"`
 	Context   map[string]interface{} `json:"context,omitempty"`
@@ -187,7 +188,10 @@ type ValidationRule struct {
 	Required bool        `json:"required,omitempty" yaml:"required,omitempty"`
 	Min      interface{} `json:"min,omitempty" yaml:"min,omitempty"`
 	Max      interface{} `json:"max,omitempty" yaml:"max,omitempty"`
+	MinValue interface{} `json:"min_value,omitempty" yaml:"min_value,omitempty"` // Alias para Min
+	MaxValue interface{} `json:"max_value,omitempty" yaml:"max_value,omitempty"` // Alias para Max
 	Pattern  string      `json:"pattern,omitempty" yaml:"pattern,omitempty"`
+	Message  string      `json:"message,omitempty" yaml:"message,omitempty"` // Campo Message que faltaba
 }
 
 // TaskFunc define la firma de una función de tarea
@@ -201,3 +205,37 @@ type HookFuncWithData func(data interface{}) error
 
 // HookFuncWithContext define la firma de una función de hook con contexto completo
 type HookFuncWithContext func(ctx *HookContext) error
+
+// ParseNodeType convierte un string a NodeType
+func ParseNodeType(s string) (NodeType, error) {
+	switch s {
+	case "task":
+		return Task, nil
+	case "subdag":
+		return SubDag, nil
+	case "conditional":
+		return Conditional, nil
+	case "foreach":
+		return Foreach, nil
+	case "branch":
+		return Branch, nil
+	case "parallel":
+		return Parallel, nil
+	case "http":
+		return HTTP, nil
+	case "delay":
+		return Delay, nil
+	case "transform":
+		return Transform, nil
+	case "validation":
+		return Validation, nil
+	case "merge":
+		return Merge, nil
+	case "split":
+		return Split, nil
+	case "filter":
+		return Filter, nil
+	default:
+		return Task, fmt.Errorf("unknown node type: %s", s)
+	}
+}

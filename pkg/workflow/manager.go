@@ -444,9 +444,213 @@ func (wm *WorkflowManager) createNodeFromConfig(nodeCfg *config.NodeConfig) (Nod
 			// Branches se configurarán después usando ParallelTasks
 		}, nil
 
+	// ===== NUEVOS NODOS AVANZADOS =====
+
+	case "http":
+		if nodeCfg.URL == "" {
+			return nil, fmt.Errorf("http node %s requires URL", nodeCfg.ID)
+		}
+
+		method := nodeCfg.Method
+		if method == "" {
+			method = "GET"
+		}
+
+		return &HTTPNode{
+			Node: Node[interface{}]{
+				ID:   nodeCfg.ID,
+				Type: HTTP,
+			},
+			URL:     nodeCfg.URL,
+			Method:  method,
+			Headers: nodeCfg.Headers,
+			Body:    nodeCfg.Body,
+			Timeout: time.Duration(30) * time.Second, // Default timeout
+		}, nil
+
+	case "delay":
+		if nodeCfg.Duration == "" {
+			return nil, fmt.Errorf("delay node %s requires duration", nodeCfg.ID)
+		}
+
+		duration, err := time.ParseDuration(nodeCfg.Duration)
+		if err != nil {
+			return nil, fmt.Errorf("invalid duration for delay node %s: %w", nodeCfg.ID, err)
+		}
+
+		return &DelayNode{
+			Node: Node[interface{}]{
+				ID:   nodeCfg.ID,
+				Type: Delay,
+			},
+			Duration: duration,
+		}, nil
+
+	case "validation":
+		if len(nodeCfg.Rules) == 0 {
+			return nil, fmt.Errorf("validation node %s requires rules", nodeCfg.ID)
+		}
+
+		// Convertir reglas de configuración a ValidationRule
+		var rules []ValidationRule
+		for _, ruleConfig := range nodeCfg.Rules {
+			rule := ValidationRule{
+				Field:    ruleConfig.Field,
+				Type:     ruleConfig.Type,
+				Required: ruleConfig.Required,
+				MinValue: ruleConfig.MinValue,
+				MaxValue: ruleConfig.MaxValue,
+				Pattern:  ruleConfig.Pattern,
+				Message:  ruleConfig.Message,
+			}
+			rules = append(rules, rule)
+		}
+
+		return &ValidationNode{
+			Node: Node[interface{}]{
+				ID:   nodeCfg.ID,
+				Type: Validation,
+			},
+			Rules:            rules,
+			StopOnFirstError: false, // Configurar según necesidades
+		}, nil
+
+	case "transform":
+		transformNode := &TransformNode{
+			Node: Node[interface{}]{
+				ID:   nodeCfg.ID,
+				Type: Transform,
+			},
+			Mapping:      nodeCfg.Mapping,
+			KeepOriginal: true, // Default behavior
+		}
+
+		// Si hay función de transformación personalizada registrada
+		if nodeCfg.Transform != "" {
+			if customFunc, exists := wm.tasks[nodeCfg.Transform]; exists {
+				transformNode.CustomFunc = customFunc
+			}
+		}
+
+		return transformNode, nil
+
+	case "merge":
+		strategy := MergeDeep // Default strategy
+		if strategyStr, ok := nodeCfg.Mapping["strategy"].(string); ok {
+			strategy = MergeStrategy(strategyStr)
+		}
+
+		return &MergeNode{
+			Node: Node[interface{}]{
+				ID:   nodeCfg.ID,
+				Type: Merge,
+			},
+			Strategy:    strategy,
+			IgnoreEmpty: true, // Default behavior
+		}, nil
+
+	case "split":
+		splitNode := &SplitNode{
+			Node: Node[interface{}]{
+				ID:   nodeCfg.ID,
+				Type: Split,
+			},
+			Strategy:     SplitByField, // Default strategy
+			KeepOriginal: false,        // Default behavior
+		}
+
+		// Configurar estrategia desde mapping
+		if mapping := nodeCfg.Mapping; mapping != nil {
+			if strategyStr, ok := mapping["strategy"].(string); ok {
+				splitNode.Strategy = SplitStrategy(strategyStr)
+			}
+			if pattern, ok := mapping["pattern"].(string); ok {
+				splitNode.Pattern = pattern
+			}
+			if chunkSize, ok := mapping["chunk_size"].(float64); ok {
+				splitNode.ChunkSize = int(chunkSize)
+			}
+			if fields, ok := mapping["fields"].([]interface{}); ok {
+				for _, field := range fields {
+					if fieldStr, ok := field.(string); ok {
+						splitNode.Fields = append(splitNode.Fields, fieldStr)
+					}
+				}
+			}
+		}
+
+		return splitNode, nil
+
+	case "filter":
+		filterNode := &FilterNode{
+			Node: Node[interface{}]{
+				ID:   nodeCfg.ID,
+				Type: Filter,
+			},
+			Logic:       "and", // Default logic
+			KeepMatched: true,  // Default behavior
+		}
+
+		// Configurar condiciones desde mapping
+		if mapping := nodeCfg.Mapping; mapping != nil {
+			if logic, ok := mapping["logic"].(string); ok {
+				filterNode.Logic = logic
+			}
+			if keepMatched, ok := mapping["keep_matched"].(bool); ok {
+				filterNode.KeepMatched = keepMatched
+			}
+			if conditions, ok := mapping["conditions"].([]interface{}); ok {
+				for _, conditionData := range conditions {
+					if condMap, ok := conditionData.(map[string]interface{}); ok {
+						condition := FilterCondition{
+							Field:    getStringFromMap(condMap, "field"),
+							Operator: getStringFromMap(condMap, "operator"),
+							Value:    condMap["value"],
+						}
+						if caseSensitive, exists := condMap["case_sensitive"]; exists {
+							if cs, ok := caseSensitive.(bool); ok {
+								condition.CaseSensitive = cs
+							}
+						}
+						filterNode.Conditions = append(filterNode.Conditions, condition)
+					}
+				}
+			}
+		}
+
+		return filterNode, nil
+
+	case "subflow":
+		subflowNode := &SubflowNode{
+			Node: Node[interface{}]{
+				ID:   nodeCfg.ID,
+				Type: Subflow,
+			},
+			SubflowPath:  nodeCfg.SubflowPath,
+			StartNodeID:  nodeCfg.SubflowID,
+			IsolateState: true, // Default: isolate state
+		}
+
+		// Configurar parámetros desde mapping
+		if nodeCfg.Mapping != nil {
+			subflowNode.Parameters = nodeCfg.Mapping
+		}
+
+		return subflowNode, nil
+
 	default:
 		return nil, fmt.Errorf("unsupported node type: %s", nodeCfg.Type)
 	}
+}
+
+// Helper function para extraer strings de maps
+func getStringFromMap(m map[string]interface{}, key string) string {
+	if value, exists := m[key]; exists {
+		if str, ok := value.(string); ok {
+			return str
+		}
+	}
+	return ""
 }
 
 // Execute ejecuta un workflow (método legacy para compatibilidad)

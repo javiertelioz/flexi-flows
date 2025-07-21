@@ -189,10 +189,10 @@ func (suite *ConfigParserTestSuite) TestParseConfigWithHooks() {
 				"type": "task",
 				"function": "StartTask",
 				"hooks": {
-					"validation": {
-						"type": "before",
-						"function": "ValidateInput"
-					}
+					"validation": [{
+							"type": "before",
+							"function": "ValidateInput"
+					}]
 				}
 			}
 		]
@@ -214,8 +214,8 @@ func (suite *ConfigParserTestSuite) TestParseConfigWithHooks() {
 	nodeHooks := config.Nodes[0].Hooks
 	suite.Len(nodeHooks, 1)
 	validationHook := nodeHooks["validation"]
-	suite.Equal("before", validationHook.Type)
-	suite.Equal("ValidateInput", validationHook.Function)
+	suite.Equal("before", validationHook[0].Type)
+	suite.Equal("ValidateInput", validationHook[0].Function)
 }
 
 // TestParseConfigWithSettings prueba configuraciones globales
@@ -537,8 +537,8 @@ func (suite *ConfigParserTestSuite) TestNodeConfigTypes() {
 	ageRule := validationNode.Rules[1]
 	suite.Equal("age", ageRule.Field)
 	suite.Equal("number", ageRule.Type)
-	suite.Equal(float64(0), ageRule.Min)
-	suite.Equal(float64(120), ageRule.Max)
+	suite.Equal(float64(0), ageRule.MinValue)
+	suite.Equal(float64(120), ageRule.MaxValue)
 
 	// Verificar nodo de transformación
 	transformNode := config.Nodes[3]

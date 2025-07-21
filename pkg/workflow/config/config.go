@@ -128,6 +128,7 @@ func (cp *ConfigParser) applyTemplating(config *WorkflowConfig) error {
 			processed, _ := cp.templateEngine.Process(node.URL, config.Variables)
 			node.URL = processed
 		}
+		// Timeout ahora es string y necesita procesamiento de template
 		if node.Timeout != "" {
 			processed, _ := cp.templateEngine.Process(node.Timeout, config.Variables)
 			node.Timeout = processed
@@ -221,7 +222,9 @@ func (cp *ConfigParser) validateConfig(config *WorkflowConfig) error {
 func (cp *ConfigParser) validateNodeConfig(node *NodeConfig) error {
 	switch node.Type {
 	case "task":
-		if node.Function == "" && node.TaskFunc == "" {
+		// Debug temporal para identificar el problema
+		fmt.Printf("DEBUG: node.Function='%s', node.TaskFunc=%v\n", node.Function, node.TaskFunc)
+		if node.Function == "" && node.TaskFunc == nil {
 			return fmt.Errorf("task nodes require a function")
 		}
 	case "http":
