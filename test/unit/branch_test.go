@@ -1,20 +1,23 @@
 package unit
 
 import (
+	"context"
 	"errors"
 	"testing"
 
-	"github.com/javiertelioz/flexi-flows/pkg/workflow"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/javiertelioz/flexi-flows/pkg/workflow"
 )
 
 type BranchNodeTestSuite struct {
 	suite.Suite
 	wm         *workflow.WorkflowManager
+	branchNode *workflow.BranchNode
 	mockNode1  *MockNode
 	mockNode2  *MockNode
-	branchNode *workflow.BranchNode
+	ctx        context.Context
 }
 
 func TestBranchNodeTestSuite(t *testing.T) {
@@ -23,15 +26,12 @@ func TestBranchNodeTestSuite(t *testing.T) {
 
 func (suite *BranchNodeTestSuite) SetupTest() {
 	suite.wm = workflow.NewWorkflowManager()
-
-	suite.mockNode1 = new(MockNode)
-	suite.mockNode2 = new(MockNode)
+	suite.mockNode1 = &MockNode{}
+	suite.mockNode2 = &MockNode{}
+	suite.ctx = context.Background()
 
 	suite.mockNode1.On("GetID").Return("node1")
-	suite.mockNode1.On("Execute", mock.Anything, mock.Anything).Return(nil, nil)
-
 	suite.mockNode2.On("GetID").Return("node2")
-	suite.mockNode2.On("Execute", mock.Anything, mock.Anything).Return(nil, nil)
 
 	suite.branchNode = &workflow.BranchNode{
 		Node: workflow.Node[interface{}]{
@@ -43,45 +43,59 @@ func (suite *BranchNodeTestSuite) SetupTest() {
 }
 
 func (suite *BranchNodeTestSuite) givenNodesAreSetUp() {
-	suite.mockNode1.AssertNotCalled(suite.T(), "Execute", suite.wm, "testdata")
-	suite.mockNode2.AssertNotCalled(suite.T(), "Execute", suite.wm, "testdata")
+	suite.mockNode1.AssertNotCalled(suite.T(), "Execute", suite.ctx, suite.wm, "testdata")
+	suite.mockNode2.AssertNotCalled(suite.T(), "Execute", suite.ctx, suite.wm, "testdata")
 }
 
 func (suite *BranchNodeTestSuite) givenNode1Fails() {
-	suite.mockNode1.On("Execute", mock.Anything, mock.Anything).Return(nil, errors.New("node1 error"))
+	suite.mockNode1.On("Execute", mock.Anything, mock.Anything, mock.Anything).Return(nil, errors.New("node1 error"))
 }
 
 func (suite *BranchNodeTestSuite) whenBranchNodeIsExecuted() {
-	result, err := suite.branchNode.Execute(suite.wm, "testdata")
+	result, err := suite.branchNode.Execute(suite.ctx, suite.wm, "testdata")
 	suite.NoError(err)
-	suite.Nil(result)
+	suite.NotNil(result)
+
+	// El BranchNode retorna un map con estructura específica
+	resultMap, ok := result.(map[string]interface{})
+	suite.True(ok, "Result should be a map[string]interface{}")
+
+	// Verificar que contiene los resultados esperados
+	if results, exists := resultMap["results"]; exists {
+		resultsArray, ok := results.([]interface{})
+		suite.True(ok, "Results should be an array")
+		suite.ElementsMatch([]interface{}{"result1", "result2"}, resultsArray)
+	}
 }
 
 func (suite *BranchNodeTestSuite) whenBranchNodeIsExecutedWithError() {
-	result, err := suite.branchNode.Execute(suite.wm, "testdata")
+	result, err := suite.branchNode.Execute(suite.ctx, suite.wm, "testdata")
 	suite.Error(err)
 	suite.Nil(result)
 }
 
 func (suite *BranchNodeTestSuite) thenBothNodesShouldBeExecuted() {
-	suite.mockNode1.AssertCalled(suite.T(), "Execute", suite.wm, "testdata")
-	suite.mockNode2.AssertCalled(suite.T(), "Execute", suite.wm, "testdata")
+	// Los nodos son ejecutados con contextos derivados (WithCancel), no el contexto original
+	suite.mockNode1.AssertCalled(suite.T(), "Execute", mock.AnythingOfType("*context.cancelCtx"), suite.wm, "testdata")
+	suite.mockNode2.AssertCalled(suite.T(), "Execute", mock.AnythingOfType("*context.cancelCtx"), suite.wm, "testdata")
 }
 
 func (suite *BranchNodeTestSuite) thenNode1ShouldFail() {
-	suite.mockNode1.AssertCalled(suite.T(), "Execute", suite.wm, "testdata")
-	suite.mockNode2.AssertNotCalled(suite.T(), "Execute", suite.wm, "testdata")
+	// El nodo es ejecutado con contexto derivado (WithCancel), no el contexto original
+	suite.mockNode1.AssertCalled(suite.T(), "Execute", mock.AnythingOfType("*context.cancelCtx"), suite.wm, "testdata")
 }
 
-func (suite *BranchNodeTestSuite) TestBranchNodeExecution() {
+func (suite *BranchNodeTestSuite) TestBranchNodeExecutesBothNodes() {
 	suite.givenNodesAreSetUp()
+	suite.mockNode1.On("Execute", mock.Anything, mock.Anything, mock.Anything).Return("result1", nil)
+	suite.mockNode2.On("Execute", mock.Anything, mock.Anything, mock.Anything).Return("result2", nil)
 	suite.whenBranchNodeIsExecuted()
 	suite.thenBothNodesShouldBeExecuted()
 }
 
-/*func (suite *BranchNodeTestSuite) TestBranchNodeExecutionWithError() {
-	suite.givenNodesAreSetUp()
+func (suite *BranchNodeTestSuite) TestBranchNodeHandlesError() {
 	suite.givenNode1Fails()
+	suite.mockNode2.On("Execute", mock.Anything, mock.Anything, mock.Anything).Return("result2", nil)
 	suite.whenBranchNodeIsExecutedWithError()
 	suite.thenNode1ShouldFail()
-}*/
+}

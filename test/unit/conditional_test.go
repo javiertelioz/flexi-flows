@@ -1,6 +1,7 @@
 package unit
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -15,6 +16,7 @@ type ConditionalNodeTestSuite struct {
 	mockTrueNode    *MockNode
 	mockFalseNode   *MockNode
 	conditionalNode *workflow.ConditionalNode
+	ctx             context.Context
 }
 
 func TestConditionalNodeTestSuite(t *testing.T) {
@@ -23,15 +25,16 @@ func TestConditionalNodeTestSuite(t *testing.T) {
 
 func (suite *ConditionalNodeTestSuite) SetupTest() {
 	suite.wm = workflow.NewWorkflowManager()
+	suite.ctx = context.Background()
 
 	suite.mockTrueNode = new(MockNode)
 	suite.mockFalseNode = new(MockNode)
 
 	suite.mockTrueNode.On("GetID").Return("trueNode")
-	suite.mockTrueNode.On("Execute", mock.Anything, mock.Anything).Return("trueResult", nil)
+	suite.mockTrueNode.On("Execute", mock.Anything, mock.Anything, mock.Anything).Return("trueResult", nil)
 
 	suite.mockFalseNode.On("GetID").Return("falseNode")
-	suite.mockFalseNode.On("Execute", mock.Anything, mock.Anything).Return("falseResult", nil)
+	suite.mockFalseNode.On("Execute", mock.Anything, mock.Anything, mock.Anything).Return("falseResult", nil)
 
 	condition := func(data interface{}) bool {
 		return data.(bool)
@@ -49,67 +52,68 @@ func (suite *ConditionalNodeTestSuite) SetupTest() {
 }
 
 func (suite *ConditionalNodeTestSuite) givenConditionIsTrue() {
-	suite.mockTrueNode.AssertNotCalled(suite.T(), "Execute", suite.wm, true)
-	suite.mockFalseNode.AssertNotCalled(suite.T(), "Execute", suite.wm, true)
+	suite.mockTrueNode.AssertNotCalled(suite.T(), "Execute", suite.ctx, suite.wm, true)
+	suite.mockFalseNode.AssertNotCalled(suite.T(), "Execute", suite.ctx, suite.wm, true)
 }
 
 func (suite *ConditionalNodeTestSuite) givenConditionIsFalse() {
-	suite.mockTrueNode.AssertNotCalled(suite.T(), "Execute", suite.wm, false)
-	suite.mockFalseNode.AssertNotCalled(suite.T(), "Execute", suite.wm, false)
+	suite.mockTrueNode.AssertNotCalled(suite.T(), "Execute", suite.ctx, suite.wm, false)
+	suite.mockFalseNode.AssertNotCalled(suite.T(), "Execute", suite.ctx, suite.wm, false)
 }
 
 func (suite *ConditionalNodeTestSuite) givenTrueNodeFails() {
-	suite.mockTrueNode.On("Execute", mock.Anything, mock.Anything).Return(nil, errors.New("trueNode error"))
+	// Limpiar mocks anteriores y configurar para que falle
+	suite.mockTrueNode.ExpectedCalls = nil
+	suite.mockTrueNode.On("GetID").Return("trueNode")
+	suite.mockTrueNode.On("Execute", mock.Anything, mock.Anything, mock.Anything).Return(nil, errors.New("trueNode error"))
 }
 
 func (suite *ConditionalNodeTestSuite) whenConditionalNodeIsExecutedWithTrue() {
-	result, err := suite.conditionalNode.Execute(suite.wm, true)
+	result, err := suite.conditionalNode.Execute(suite.ctx, suite.wm, true)
 	suite.NoError(err)
 	suite.Equal("trueResult", result)
 }
 
 func (suite *ConditionalNodeTestSuite) whenConditionalNodeIsExecutedWithFalse() {
-	result, err := suite.conditionalNode.Execute(suite.wm, false)
+	result, err := suite.conditionalNode.Execute(suite.ctx, suite.wm, false)
 	suite.NoError(err)
 	suite.Equal("falseResult", result)
 }
 
 func (suite *ConditionalNodeTestSuite) whenConditionalNodeIsExecutedWithTrueAndFails() {
-	result, err := suite.conditionalNode.Execute(suite.wm, true)
+	result, err := suite.conditionalNode.Execute(suite.ctx, suite.wm, true)
 	suite.Error(err)
 	suite.Nil(result)
 }
 
 func (suite *ConditionalNodeTestSuite) thenTrueNodeShouldBeExecuted() {
-	suite.mockTrueNode.AssertCalled(suite.T(), "Execute", suite.wm, true)
-	suite.mockFalseNode.AssertNotCalled(suite.T(), "Execute", suite.wm, true)
+	suite.mockTrueNode.AssertCalled(suite.T(), "Execute", suite.ctx, suite.wm, true)
+	suite.mockFalseNode.AssertNotCalled(suite.T(), "Execute", suite.ctx, suite.wm, true)
 }
 
 func (suite *ConditionalNodeTestSuite) thenFalseNodeShouldBeExecuted() {
-	suite.mockTrueNode.AssertNotCalled(suite.T(), "Execute", suite.wm, false)
-	suite.mockFalseNode.AssertCalled(suite.T(), "Execute", suite.wm, false)
+	suite.mockFalseNode.AssertCalled(suite.T(), "Execute", suite.ctx, suite.wm, false)
+	suite.mockTrueNode.AssertNotCalled(suite.T(), "Execute", suite.ctx, suite.wm, false)
 }
 
 func (suite *ConditionalNodeTestSuite) thenTrueNodeShouldFail() {
-	suite.mockTrueNode.AssertCalled(suite.T(), "Execute", suite.wm, true)
-	suite.mockFalseNode.AssertNotCalled(suite.T(), "Execute", suite.wm, true)
+	suite.mockTrueNode.AssertCalled(suite.T(), "Execute", suite.ctx, suite.wm, true)
 }
 
-func (suite *ConditionalNodeTestSuite) TestConditionalNodeExecutionTrue() {
+func (suite *ConditionalNodeTestSuite) TestConditionalNodeExecutesTrueNode() {
 	suite.givenConditionIsTrue()
 	suite.whenConditionalNodeIsExecutedWithTrue()
 	suite.thenTrueNodeShouldBeExecuted()
 }
 
-func (suite *ConditionalNodeTestSuite) TestConditionalNodeExecutionFalse() {
+func (suite *ConditionalNodeTestSuite) TestConditionalNodeExecutesFalseNode() {
 	suite.givenConditionIsFalse()
 	suite.whenConditionalNodeIsExecutedWithFalse()
 	suite.thenFalseNodeShouldBeExecuted()
 }
 
-/*func (suite *ConditionalNodeTestSuite) TestConditionalNodeExecutionTrueWithError() {
-	suite.givenConditionIsTrue()
+func (suite *ConditionalNodeTestSuite) TestConditionalNodeHandlesError() {
 	suite.givenTrueNodeFails()
 	suite.whenConditionalNodeIsExecutedWithTrueAndFails()
 	suite.thenTrueNodeShouldFail()
-}*/
+}

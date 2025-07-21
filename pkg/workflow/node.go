@@ -1,6 +1,7 @@
 package workflow
 
 import (
+	"context"
 	"fmt"
 )
 
@@ -22,10 +23,18 @@ func (n *Node[T]) GetType() NodeType {
 	return n.Type
 }
 
-func (n *Node[T]) Execute(wm *WorkflowManager, data interface{}) (interface{}, error) {
+func (n *Node[T]) Execute(ctx context.Context, wm *WorkflowManager, data interface{}) (interface{}, error) {
+	// Verificar si el contexto ha sido cancelado
+	select {
+	case <-ctx.Done():
+		return nil, NewWorkflowError(n.ID, n.Type, "context cancelled before node execution", ctx.Err())
+	default:
+	}
+
 	typedData, ok := data.(T)
 	if !ok {
-		return nil, fmt.Errorf("invalid data type: expected %T, got %T", typedData, data)
+		return nil, NewWorkflowError(n.ID, n.Type, "invalid data type",
+			fmt.Errorf("expected %T, got %T", typedData, data))
 	}
 
 	var err error
@@ -33,7 +42,7 @@ func (n *Node[T]) Execute(wm *WorkflowManager, data interface{}) (interface{}, e
 	if n.BeforeExecute != nil {
 		typedData, err = n.BeforeExecute(typedData)
 		if err != nil {
-			return nil, err
+			return nil, NewWorkflowError(n.ID, n.Type, "before execute failed", err)
 		}
 	}
 
@@ -41,15 +50,21 @@ func (n *Node[T]) Execute(wm *WorkflowManager, data interface{}) (interface{}, e
 	if n.TaskFunc != nil {
 		result, err = n.TaskFunc(typedData)
 		if err != nil {
-			return nil, err
+			return nil, NewWorkflowError(n.ID, n.Type, "task execution failed", err)
 		}
+	} else {
+		result = typedData
 	}
 
 	if n.AfterExecute != nil {
 		result, err = n.AfterExecute(result)
 		if err != nil {
-			return nil, err
+			return nil, NewWorkflowError(n.ID, n.Type, "after execute failed", err)
 		}
+	}
+
+	if len(n.Next) > 0 {
+		return wm.ExecuteNodeWithContext(ctx, n.Next[0], result)
 	}
 
 	return result, nil

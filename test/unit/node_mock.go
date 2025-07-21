@@ -1,6 +1,7 @@
 package unit
 
 import (
+	"context"
 	"github.com/stretchr/testify/mock"
 
 	"github.com/javiertelioz/flexi-flows/pkg/workflow"
@@ -19,7 +20,7 @@ func (m *MockNode) GetType() workflow.NodeType {
 	return workflow.Task
 }
 
-func (m *MockNode) Execute(wm *workflow.WorkflowManager, data interface{}) (interface{}, error) {
-	args := m.Called(wm, data)
+func (m *MockNode) Execute(ctx context.Context, wm *workflow.WorkflowManager, data interface{}) (interface{}, error) {
+	args := m.Called(ctx, wm, data)
 	return args.Get(0), args.Error(1)
 }

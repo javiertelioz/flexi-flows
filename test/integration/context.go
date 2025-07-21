@@ -21,12 +21,12 @@ func iExecuteTheWorkflowFrom(nodeID string) error {
 		return err
 	}
 
-	err = wm.LoadFromConfig(cfg)
+	err = wm.BuildFromConfig(cfg)
 	if err != nil {
 		return err
 	}
 
-	err = wm.Execute(nodeID, nil)
+	_, err = wm.Execute(nodeID, nil)
 	if err != nil {
 		return err
 	}
@@ -104,8 +104,9 @@ func init() {
 	wm.RegisterTask("subtask2Func", subtask2Func)
 	wm.RegisterTask("endFunc", endFunc)
 
-	wm.RegisterHook("beforeTask", beforeTask)
-	wm.RegisterHook("afterTask", afterTask)
+	// Registrar hooks usando el nuevo sistema
+	wm.RegisterHookFunc(workflow.BeforeExecution, beforeTask)
+	wm.RegisterHookFunc(workflow.AfterExecution, afterTask)
 
 }
 
@@ -118,5 +119,13 @@ func foreachFunc(data interface{}) (interface{}, error)  { return data, nil }
 func subtask1Func(data interface{}) (interface{}, error) { return data, nil }
 func subtask2Func(data interface{}) (interface{}, error) { return data, nil }
 func endFunc(data interface{}) (interface{}, error)      { return data, nil }
-func beforeTask(data interface{}) (interface{}, error)   { return data, nil }
-func afterTask(data interface{}) (interface{}, error)    { return data, nil }
+
+// Hook functions - deben tener la firma correcta para los hooks
+func beforeTask(ctx *workflow.HookContext) error {
+	// Log o procesar el contexto del hook
+	return nil
+}
+func afterTask(ctx *workflow.HookContext) error {
+	// Log o procesar el contexto del hook
+	return nil
+}

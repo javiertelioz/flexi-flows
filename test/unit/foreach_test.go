@@ -1,6 +1,7 @@
 package unit
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -12,6 +13,7 @@ type ForeachNodeTestSuite struct {
 	suite.Suite
 	wm          *workflow.WorkflowManager
 	foreachNode *workflow.ForeachNode
+	ctx         context.Context
 }
 
 func TestForeachNodeTestSuite(t *testing.T) {
@@ -20,7 +22,8 @@ func TestForeachNodeTestSuite(t *testing.T) {
 
 func (suite *ForeachNodeTestSuite) SetupTest() {
 	suite.wm = workflow.NewWorkflowManager()
-	items := []interface{}{1, 2, 3}
+	suite.ctx = context.Background()
+
 	iterateFunc := func(item interface{}) (interface{}, error) {
 		return item.(int) * 2, nil
 	}
@@ -30,8 +33,8 @@ func (suite *ForeachNodeTestSuite) SetupTest() {
 			ID:   "foreach",
 			Type: workflow.Foreach,
 		},
-		Collection:  items,
 		IterateFunc: iterateFunc,
+		Collection:  []interface{}{1, 2, 3},
 	}
 }
 
@@ -49,34 +52,23 @@ func (suite *ForeachNodeTestSuite) givenIterateFuncFailsForItem() {
 }
 
 func (suite *ForeachNodeTestSuite) whenForeachNodeIsExecuted() {
-	result, err := suite.foreachNode.Execute(suite.wm, nil)
+	result, err := suite.foreachNode.Execute(suite.ctx, suite.wm, nil)
 	suite.NoError(err)
-	suite.Nil(result)
+	suite.NotNil(result)
 }
 
 func (suite *ForeachNodeTestSuite) whenForeachNodeIsExecutedWithError() {
-	result, err := suite.foreachNode.Execute(suite.wm, nil)
+	result, err := suite.foreachNode.Execute(suite.ctx, suite.wm, nil)
 	suite.Error(err)
 	suite.Nil(result)
 }
 
-func (suite *ForeachNodeTestSuite) thenAllItemsShouldBeProcessed() {
-	// No additional assertions needed here, as they are in the `when` step
-}
-
-func (suite *ForeachNodeTestSuite) thenExecutionShouldFail() {
-	// No additional assertions needed here, as they are in the `when` step
-}
-
-func (suite *ForeachNodeTestSuite) TestForeachNodeExecution() {
+func (suite *ForeachNodeTestSuite) TestForeachNodeExecutesSuccessfully() {
 	suite.givenForeachNodeIsSetUp()
 	suite.whenForeachNodeIsExecuted()
-	suite.thenAllItemsShouldBeProcessed()
 }
 
-func (suite *ForeachNodeTestSuite) TestForeachNodeExecutionWithError() {
-	suite.givenForeachNodeIsSetUp()
+func (suite *ForeachNodeTestSuite) TestForeachNodeHandlesError() {
 	suite.givenIterateFuncFailsForItem()
 	suite.whenForeachNodeIsExecutedWithError()
-	suite.thenExecutionShouldFail()
 }

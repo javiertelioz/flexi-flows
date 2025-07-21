@@ -1,6 +1,7 @@
 package unit
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -53,13 +54,15 @@ func (suite *NodeTestSuite) givenTaskFuncFails() {
 }
 
 func (suite *NodeTestSuite) whenNodeIsExecuted() {
-	result, err := suite.node.Execute(suite.wm, 1)
+	ctx := context.Background()
+	result, err := suite.node.Execute(ctx, suite.wm, 1)
 	suite.NoError(err)
 	suite.Equal(3, result)
 }
 
 func (suite *NodeTestSuite) whenNodeIsExecutedWithError() {
-	result, err := suite.node.Execute(suite.wm, 1)
+	ctx := context.Background()
+	result, err := suite.node.Execute(ctx, suite.wm, 1)
 	suite.Error(err)
 	suite.Equal(0, result)
 }
