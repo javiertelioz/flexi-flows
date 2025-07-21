@@ -222,8 +222,6 @@ func (cp *ConfigParser) validateConfig(config *WorkflowConfig) error {
 func (cp *ConfigParser) validateNodeConfig(node *NodeConfig) error {
 	switch node.Type {
 	case "task":
-		// Debug temporal para identificar el problema
-		fmt.Printf("DEBUG: node.Function='%s', node.TaskFunc=%v\n", node.Function, node.TaskFunc)
 		if node.Function == "" && node.TaskFunc == nil {
 			return fmt.Errorf("task nodes require a function")
 		}

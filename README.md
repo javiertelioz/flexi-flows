@@ -39,6 +39,35 @@ Flexi-Flows es un plugin de workflows en Go que permite crear flujos de trabajo 
 - `split` - División de datos
 - `filter` - Filtrado de datos
 
+## 🚧 Nodos Pendientes - Implementación Futura
+
+### 🔧 Nodos de Integración
+Los siguientes nodos están planificados para futuras versiones para mejorar la integración empresarial:
+
+- **`database`** - Para operaciones CRUD en bases de datos (MySQL, PostgreSQL, MongoDB)
+- **`cache`** - Para operaciones de caché (Redis, Memcached)
+- **`queue`** - Para integración con colas de mensajes (RabbitMQ, AWS SQS, Apache Kafka)
+- **`webhook`** - Para recibir y procesar webhooks
+- **`email`** - Para envío de emails (SMTP, SendGrid, AWS SES)
+- **`notification`** - Para notificaciones push, Slack, Teams, Discord
+
+### 🎮 Nodos de Control Avanzado
+Nodos para patrones de control más sofisticados:
+
+- **`retry`** - Reintentos con backoff exponencial y políticas avanzadas
+- **`circuit_breaker`** - Implementación del patrón Circuit Breaker
+- **`batch`** - Procesamiento en lotes con ventanas deslizantes
+- **`scheduler`** - Programación de ejecuciones (cron-like, intervals)
+
+### 📈 Nodos de Monitoreo
+Para observabilidad y monitoreo avanzado:
+
+- **`metrics`** - Recolección de métricas (Prometheus, InfluxDB)
+- **`audit`** - Auditoría avanzada con trazabilidad completa
+- **`health_check`** - Verificaciones de salud de servicios externos
+
+> **Nota:** Si necesitas alguno de estos nodos para tu proyecto, puedes contribuir con su implementación o abrir un issue para solicitar su priorización.
+
 ## Guía de Uso
 
 ### Instalación
