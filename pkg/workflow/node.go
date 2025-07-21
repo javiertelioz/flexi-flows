@@ -27,7 +27,7 @@ func (n *Node[T]) Execute(ctx context.Context, wm *WorkflowManager, data interfa
 	// Verificar si el contexto ha sido cancelado
 	select {
 	case <-ctx.Done():
-		return nil, NewWorkflowError(n.ID, n.Type, "context cancelled before node execution", ctx.Err())
+		return nil, NewWorkflowError(n.ID, n.Type, "context cancelled", ctx.Err())
 	default:
 	}
 

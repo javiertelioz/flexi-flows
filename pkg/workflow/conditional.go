@@ -13,7 +13,7 @@ func (n *ConditionalNode) Execute(ctx context.Context, wm *WorkflowManager, data
 	// Verificar si el contexto ha sido cancelado
 	select {
 	case <-ctx.Done():
-		return nil, NewWorkflowError(n.ID, n.Type, "context cancelled before conditional evaluation", ctx.Err())
+		return nil, NewWorkflowError(n.ID, n.Type, "context cancelled before conditional execution", ctx.Err())
 	default:
 	}
 

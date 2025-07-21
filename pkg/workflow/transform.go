@@ -31,13 +31,8 @@ func (tn *TransformNode) Execute(ctx context.Context, wm *WorkflowManager, data 
 	// Verificar si el contexto ha sido cancelado
 	select {
 	case <-ctx.Done():
-		return nil, NewWorkflowError(tn.ID, tn.Type, "context cancelled before transformation", ctx.Err())
+		return nil, NewWorkflowError(tn.ID, tn.Type, "context cancelled before transform", ctx.Err())
 	default:
-	}
-
-	// Si hay una función personalizada, usarla
-	if tn.CustomFunc != nil {
-		return tn.executeCustomFunction(ctx, data)
 	}
 
 	// Convertir datos a map para facilitar transformación
@@ -84,6 +79,25 @@ func (tn *TransformNode) Execute(ctx context.Context, wm *WorkflowManager, data 
 		if err := tn.applyTransformRule(dataMap, result, rule); err != nil {
 			return nil, NewWorkflowError(tn.ID, tn.Type,
 				fmt.Sprintf("failed to apply transform rule for field %s", rule.SourceField), err)
+		}
+	}
+
+	// Si hay función personalizada, usarla
+	if tn.CustomFunc != nil {
+		customResult, err := tn.executeCustomFunction(ctx, data)
+		if err != nil {
+			return nil, NewWorkflowError(tn.ID, tn.Type, "custom transform failed", err)
+		}
+		// Convertir el resultado personalizado a map si es necesario
+		if customMap, ok := customResult.(map[string]interface{}); ok {
+			result = customMap
+		} else {
+			// Si no es un map, intentar convertir
+			convertedMap, err := tn.convertToMap(customResult)
+			if err != nil {
+				return nil, NewWorkflowError(tn.ID, tn.Type, "failed to convert custom result to map", err)
+			}
+			result = convertedMap
 		}
 	}
 

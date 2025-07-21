@@ -11,12 +11,13 @@ import (
 // SubflowNode representa un nodo que ejecuta un sub-workflow
 type SubflowNode struct {
 	Node[interface{}]
-	SubflowPath   string                 // Ruta al archivo de configuración del sub-workflow
-	SubflowConfig *config.WorkflowConfig // Configuración del sub-workflow (si se proporciona directamente)
-	StartNodeID   string                 // ID del nodo inicial en el sub-workflow
-	Parameters    map[string]interface{} // Parámetros a pasar al sub-workflow
-	Timeout       int64                  // Timeout en segundos para el sub-workflow
-	IsolateState  bool                   // Si aislar el estado del sub-workflow
+	SubflowPath    string                 // Ruta al archivo de configuración del sub-workflow
+	SubflowConfig  *config.WorkflowConfig // Configuración del sub-workflow (si se proporciona directamente)
+	SubflowManager *WorkflowManager       // Manager para el sub-workflow
+	StartNodeID    string                 // ID del nodo inicial en el sub-workflow
+	Parameters     map[string]interface{} // Parámetros a pasar al sub-workflow
+	Timeout        int64                  // Timeout en segundos para el sub-workflow
+	IsolateState   bool                   // Si aislar el estado del sub-workflow
 }
 
 // SubflowResult contiene el resultado de la ejecución del sub-workflow
@@ -51,36 +52,21 @@ func (sn *SubflowNode) Execute(ctx context.Context, wm *WorkflowManager, data in
 		subWm = wm
 	}
 
-	// Cargar configuración del sub-workflow
-	var cfg *config.WorkflowConfig
-	var err error
+	// Crear manager para el subflow si no existe
+	if sn.SubflowManager == nil {
+		sn.SubflowManager = NewWorkflowManager()
 
-	if sn.SubflowConfig != nil {
-		cfg = sn.SubflowConfig
-	} else if sn.SubflowPath != "" {
-		cfg, err = config.LoadConfig(sn.SubflowPath)
-		if err != nil {
-			return nil, NewWorkflowError(sn.ID, sn.Type,
-				fmt.Sprintf("failed to load subflow config from %s", sn.SubflowPath), err)
+		// Cargar configuración del subworkflow si se especifica una ruta
+		if sn.SubflowPath != "" {
+			if err := sn.loadSubflowConfig(sn.SubflowPath); err != nil {
+				return nil, NewWorkflowError(sn.ID, sn.Type, "failed to load subflow configuration", err)
+			}
 		}
-	} else {
-		return nil, NewWorkflowError(sn.ID, sn.Type,
-			"no subflow configuration provided", fmt.Errorf("either SubflowPath or SubflowConfig must be specified"))
 	}
 
-	// Construir el sub-workflow
-	if err := subWm.BuildFromConfig(cfg); err != nil {
-		return nil, NewWorkflowError(sn.ID, sn.Type, "failed to build subflow", err)
-	}
-
-	// Determinar nodo de inicio
-	startNodeID := sn.StartNodeID
-	if startNodeID == "" {
-		startNodeID = cfg.StartNode
-	}
-	if startNodeID == "" {
-		return nil, NewWorkflowError(sn.ID, sn.Type,
-			"no start node specified for subflow", fmt.Errorf("StartNodeID or config.StartNode must be specified"))
+	// Validar que hay un nodo de inicio
+	if sn.StartNodeID == "" {
+		return nil, NewWorkflowError(sn.ID, sn.Type, "no start node specified for subflow", fmt.Errorf("empty start node ID"))
 	}
 
 	// Preparar datos de entrada
@@ -98,16 +84,19 @@ func (sn *SubflowNode) Execute(ctx context.Context, wm *WorkflowManager, data in
 		defer cancel()
 	}
 
-	// Ejecutar el sub-workflow
-	result, err := subWm.ExecuteWithContext(subCtx, startNodeID, inputData)
+	// Ejecutar el subworkflow
+	result, err := subWm.ExecuteWithContext(subCtx, sn.StartNodeID, inputData)
+	if err != nil {
+		return nil, NewWorkflowError(sn.ID, sn.Type, "subflow execution failed", err)
+	}
 
 	duration := getCurrentTimeMillis() - startTime
 
 	// Preparar resultado
 	subflowResult := &SubflowResult{
 		Duration:    duration,
-		SubflowName: cfg.Name,
-		StartNode:   startNodeID,
+		SubflowName: "subflow", // Usar un nombre por defecto
+		StartNode:   sn.StartNodeID,
 		Metadata: map[string]interface{}{
 			"subflow_path":    sn.SubflowPath,
 			"isolated_state":  sn.IsolateState,
@@ -116,24 +105,30 @@ func (sn *SubflowNode) Execute(ctx context.Context, wm *WorkflowManager, data in
 		},
 	}
 
-	if err != nil {
-		subflowResult.Success = false
-		subflowResult.Error = err.Error()
-
-		// Decidir si propagar el error o solo reportarlo
-		if sn.shouldPropagateError(err) {
-			return subflowResult, NewWorkflowError(sn.ID, sn.Type,
-				fmt.Sprintf("subflow execution failed: %s", err.Error()), err)
-		}
-	} else {
-		subflowResult.Success = true
-		if result != nil {
-			subflowResult.Data = result.Data
-			subflowResult.Metadata["execution_result"] = result
-		}
+	subflowResult.Success = true
+	if result != nil {
+		subflowResult.Data = result.Data
+		subflowResult.Metadata["execution_result"] = result
 	}
 
 	return subflowResult, nil
+}
+
+// loadSubflowConfig carga la configuración del subworkflow desde un archivo
+func (sn *SubflowNode) loadSubflowConfig(configPath string) error {
+	cfg, err := config.LoadConfig(configPath)
+	if err != nil {
+		return fmt.Errorf("failed to load subflow config from %s: %w", configPath, err)
+	}
+
+	sn.SubflowConfig = cfg
+
+	// Construir el subworkflow desde la configuración
+	if sn.SubflowManager == nil {
+		sn.SubflowManager = NewWorkflowManager()
+	}
+
+	return sn.SubflowManager.BuildFromConfig(cfg)
 }
 
 // copyTasks copia las tareas registradas de un manager a otro
@@ -187,8 +182,8 @@ func (sn *SubflowNode) shouldPropagateError(err error) bool {
 	// Por defecto, propagar todos los errores
 	// Se pueden agregar reglas más sofisticadas aquí
 	if workflowErr, ok := err.(*WorkflowError); ok {
-		// No propagar errores de cancelación de contexto
-		if workflowErr.Type == "context cancelled" {
+		// No propagar errores de cancelación de contexto usando el campo Code en lugar de Type
+		if workflowErr.Code == "context cancelled" {
 			return false
 		}
 	}

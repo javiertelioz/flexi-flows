@@ -3,6 +3,7 @@ package workflow
 import (
 	"context"
 	"fmt"
+	"reflect"
 )
 
 type ForeachNode struct {
@@ -20,6 +21,18 @@ func (n *ForeachNode) Execute(ctx context.Context, wm *WorkflowManager, data int
 	}
 
 	var results []interface{}
+
+	// Convertir data a slice
+	items, err := n.convertToSlice(data)
+	if err != nil {
+		return nil, NewWorkflowError(n.ID, n.Type,
+			"failed to convert data to iterable collection", err)
+	}
+
+	if len(items) == 0 {
+		return nil, NewWorkflowError(n.ID, n.Type,
+			"no items to process in foreach", fmt.Errorf("empty collection"))
+	}
 
 	for i, item := range n.Collection {
 		// Verificar cancelación en cada iteración
@@ -52,4 +65,24 @@ func (n *ForeachNode) Execute(ctx context.Context, wm *WorkflowManager, data int
 	}
 
 	return finalResult, nil
+}
+
+// convertToSlice convierte los datos a un slice para poder iterar
+func (n *ForeachNode) convertToSlice(data interface{}) ([]interface{}, error) {
+	if slice, ok := data.([]interface{}); ok {
+		return slice, nil
+	}
+
+	// Usar reflection para manejar diferentes tipos de slices
+	v := reflect.ValueOf(data)
+	if v.Kind() == reflect.Slice {
+		result := make([]interface{}, v.Len())
+		for i := 0; i < v.Len(); i++ {
+			result[i] = v.Index(i).Interface()
+		}
+		return result, nil
+	}
+
+	// Si es un solo elemento, crear slice con ese elemento
+	return []interface{}{data}, nil
 }

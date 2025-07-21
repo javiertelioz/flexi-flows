@@ -41,24 +41,18 @@ func (hn *HTTPNode) Execute(ctx context.Context, wm *WorkflowManager, data inter
 		}
 	}
 
-	// Preparar el body de la petición
-	var requestBody io.Reader
-	if hn.Body != nil {
-		// Si el body es un string, usarlo directamente
-		if bodyStr, ok := hn.Body.(string); ok {
-			requestBody = bytes.NewBufferString(bodyStr)
-		} else {
-			// Si no, serializar como JSON
-			bodyBytes, err := json.Marshal(hn.Body)
-			if err != nil {
-				return nil, NewWorkflowError(hn.ID, hn.Type, "failed to marshal request body", err)
-			}
-			requestBody = bytes.NewBuffer(bodyBytes)
-		}
+	// Validar URL
+	if hn.URL == "" {
+		return nil, NewWorkflowError(hn.ID, hn.Type, "URL is required for HTTP node", fmt.Errorf("empty URL"))
 	}
 
-	// Crear la petición HTTP
-	req, err := http.NewRequestWithContext(ctx, hn.Method, hn.URL, requestBody)
+	// Crear cliente HTTP
+	client := &http.Client{
+		Timeout: hn.Timeout,
+	}
+
+	// Crear request
+	req, err := http.NewRequestWithContext(ctx, hn.Method, hn.URL, nil)
 	if err != nil {
 		return nil, NewWorkflowError(hn.ID, hn.Type, "failed to create HTTP request", err)
 	}
@@ -73,15 +67,30 @@ func (hn *HTTPNode) Execute(ctx context.Context, wm *WorkflowManager, data inter
 		req.Header.Set("Content-Type", "application/json")
 	}
 
-	// Realizar la petición
-	resp, err := hn.Client.Do(req)
+	// Preparar el body de la petición si existe
+	if hn.Body != nil {
+		// Si el body es un string, usarlo directamente
+		if bodyStr, ok := hn.Body.(string); ok {
+			req.Body = io.NopCloser(bytes.NewBufferString(bodyStr))
+		} else {
+			// Si no, serializar como JSON
+			bodyBytes, err := json.Marshal(hn.Body)
+			if err != nil {
+				return nil, NewWorkflowError(hn.ID, hn.Type, "failed to marshal request body", err)
+			}
+			req.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+		}
+	}
+
+	// Ejecutar request
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, NewWorkflowError(hn.ID, hn.Type, "HTTP request failed", err)
 	}
 	defer resp.Body.Close()
 
-	// Leer la respuesta
-	responseBody, err := io.ReadAll(resp.Body)
+	// Leer response body
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, NewWorkflowError(hn.ID, hn.Type, "failed to read response body", err)
 	}
@@ -90,24 +99,24 @@ func (hn *HTTPNode) Execute(ctx context.Context, wm *WorkflowManager, data inter
 	result := map[string]interface{}{
 		"status_code": resp.StatusCode,
 		"headers":     resp.Header,
-		"body":        string(responseBody),
+		"body":        string(body),
 		"success":     resp.StatusCode >= 200 && resp.StatusCode < 300,
 	}
 
 	// Si la respuesta es JSON, intentar parsearla
 	if resp.Header.Get("Content-Type") == "application/json" ||
-		(len(responseBody) > 0 && responseBody[0] == '{') {
+		(len(body) > 0 && body[0] == '{') {
 		var jsonBody interface{}
-		if err := json.Unmarshal(responseBody, &jsonBody); err == nil {
+		if err := json.Unmarshal(body, &jsonBody); err == nil {
 			result["json"] = jsonBody
 		}
 	}
 
-	// Si el status code indica error, retornar error
+	// Verificar status code
 	if resp.StatusCode >= 400 {
-		return result, NewWorkflowError(hn.ID, hn.Type,
+		return nil, NewWorkflowError(hn.ID, hn.Type,
 			fmt.Sprintf("HTTP request failed with status %d", resp.StatusCode),
-			fmt.Errorf("status: %d, body: %s", resp.StatusCode, string(responseBody)))
+			fmt.Errorf("status: %s, body: %s", resp.Status, string(body)))
 	}
 
 	return result, nil

@@ -100,22 +100,23 @@ func (wm *WorkflowManager) ExecuteWithContext(ctx context.Context, startNodeID s
 
 	startNode := wm.findNodeByID(startNodeID)
 	if startNode == nil {
-		return nil, NewWorkflowError("", Task, "start node not found",
-			errors.New("start node not found: "+startNodeID))
+		return nil, NewWorkflowError("workflow", Task, "no start node found",
+			fmt.Errorf("start_node '%s' not found in nodes", startNodeID))
 	}
 
-	// Ejecutar hooks before execution
+	// Ejecutar hooks de pre-ejecución
 	hookCtx := &HookContext{
-		NodeID:      startNode.GetID(),
-		NodeType:    startNode.GetType(),
-		HookType:    BeforeExecution,
-		Data:        initialData,
-		Metadata:    make(map[string]interface{}),
+		Stage:       "before_execution",
+		WorkflowID:  executionID,
 		ExecutionID: executionID,
-		Timestamp:   startTime,
+		Data:        initialData,
+		Variables:   make(map[string]interface{}),
+		Metadata:    make(map[string]interface{}), // Inicializar el mapa Metadata
+		Timestamp:   time.Now(),
+		HookType:    PreExecution,
 	}
 
-	if err := wm.hookManager.ExecuteHooks(ctx, BeforeExecution, hookCtx); err != nil {
+	if err := wm.hookManager.ExecuteHooks(ctx, PreExecution, hookCtx); err != nil {
 		return nil, fmt.Errorf("before execution hooks failed: %w", err)
 	}
 
@@ -197,7 +198,8 @@ func (wm *WorkflowManager) ExecuteNodeWithContext(ctx context.Context, node Node
 	// Verificar si el contexto ha sido cancelado
 	select {
 	case <-ctx.Done():
-		return nil, NewWorkflowError(node.GetID(), node.GetType(), "context cancelled", ctx.Err())
+		return nil, NewWorkflowError(node.GetID(), node.GetType(),
+			"context cancelled", ctx.Err())
 	default:
 	}
 
@@ -227,11 +229,15 @@ func (wm *WorkflowManager) ExecuteNodeWithContext(ctx context.Context, node Node
 	// Ejecutar hooks before
 	hookCtx.HookType = BeforeExecution
 	if err := wm.hookManager.ExecuteHooks(ctx, BeforeExecution, hookCtx); err != nil {
-		return nil, fmt.Errorf("before hooks failed for node %s: %w", node.GetID(), err)
+		return nil, NewWorkflowError(node.GetID(), node.GetType(),
+			fmt.Sprintf("before hooks failed for node %s", node.GetID()), err)
 	}
 
 	// Ejecutar el nodo
 	result, err := node.Execute(ctx, wm, data)
+	if err != nil {
+		return nil, NewWorkflowError(node.GetID(), node.GetType(), "node execution failed", err)
+	}
 
 	duration := time.Since(nodeStartTime)
 	success := err == nil
@@ -506,12 +512,29 @@ func (wm *WorkflowManager) createNodeFromConfig(nodeCfg *config.NodeConfig) (Nod
 		// Convertir reglas de configuración a ValidationRule
 		var rules []ValidationRule
 		for _, ruleConfig := range nodeCfg.Rules {
+			// Realizar type assertion segura para MinValue y MaxValue
+			var minValue, maxValue int
+			if ruleConfig.MinValue != nil {
+				if mv, ok := ruleConfig.MinValue.(int); ok {
+					minValue = mv
+				} else if mv, ok := ruleConfig.MinValue.(float64); ok {
+					minValue = int(mv)
+				}
+			}
+			if ruleConfig.MaxValue != nil {
+				if mv, ok := ruleConfig.MaxValue.(int); ok {
+					maxValue = mv
+				} else if mv, ok := ruleConfig.MaxValue.(float64); ok {
+					maxValue = int(mv)
+				}
+			}
+
 			rule := ValidationRule{
 				Field:    ruleConfig.Field,
 				Type:     ruleConfig.Type,
 				Required: ruleConfig.Required,
-				MinValue: ruleConfig.MinValue,
-				MaxValue: ruleConfig.MaxValue,
+				MinValue: minValue,
+				MaxValue: maxValue,
 				Pattern:  ruleConfig.Pattern,
 				Message:  ruleConfig.Message,
 			}

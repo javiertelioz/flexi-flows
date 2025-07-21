@@ -2,6 +2,7 @@ package workflow
 
 import (
 	"context"
+	"fmt"
 	"time"
 )
 
@@ -16,7 +17,7 @@ func (dn *DelayNode) Execute(ctx context.Context, wm *WorkflowManager, data inte
 	// Verificar si el contexto ha sido cancelado antes del delay
 	select {
 	case <-ctx.Done():
-		return nil, NewWorkflowError(dn.ID, dn.Type, "context cancelled before delay", ctx.Err())
+		return nil, NewWorkflowError(dn.ID, dn.Type, "context cancelled before delay execution", ctx.Err())
 	default:
 	}
 
@@ -24,8 +25,14 @@ func (dn *DelayNode) Execute(ctx context.Context, wm *WorkflowManager, data inte
 	timer := time.NewTimer(dn.Duration)
 	defer timer.Stop()
 
+	startTime := time.Now()
 	// Esperar hasta que el timer expire o el contexto sea cancelado
 	select {
+	case <-ctx.Done():
+		// El contexto fue cancelado durante el delay
+		return nil, NewWorkflowError(dn.ID, dn.Type,
+			fmt.Sprintf("context cancelled during delay (waited %v of %v)", time.Since(startTime), dn.Duration),
+			ctx.Err())
 	case <-timer.C:
 		// El delay se completó exitosamente
 		return map[string]interface{}{
@@ -33,9 +40,5 @@ func (dn *DelayNode) Execute(ctx context.Context, wm *WorkflowManager, data inte
 			"duration": dn.Duration.String(),
 			"data":     data,
 		}, nil
-
-	case <-ctx.Done():
-		// El contexto fue cancelado durante el delay
-		return nil, NewWorkflowError(dn.ID, dn.Type, "context cancelled during delay", ctx.Err())
 	}
 }

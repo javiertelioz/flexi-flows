@@ -35,9 +35,7 @@ func (hm *DefaultHookManager) ExecuteHooks(ctx context.Context, hookType HookTyp
 
 	for _, hook := range hooks {
 		if err := hook.Execute(ctx, hookCtx); err != nil {
-			return NewWorkflowError(hookCtx.NodeID, hookCtx.NodeType,
-				fmt.Sprintf("hook execution failed: %v", err), err).
-				WithContext("hook_type", string(hookType))
+			return NewWorkflowError("hook_manager", Task, "hook execution failed", err)
 		}
 	}
 	return nil

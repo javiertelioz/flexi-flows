@@ -20,22 +20,22 @@ const (
 // SplitNode representa un nodo que divide datos en múltiples partes
 type SplitNode struct {
 	Node[interface{}]
-	Strategy    SplitStrategy
-	Fields      []string               // Campos a dividir (para strategy field)
-	Pattern     string                 // Patrón de división (para strategy pattern)
-	ChunkSize   int                   // Tamaño de chunks (para strategy size)
-	Condition   interface{}           // Función de condición (para strategy condition)
-	Parameters  map[string]interface{} // Parámetros adicionales
-	KeepOriginal bool                  // Si mantener los datos originales
+	Strategy     SplitStrategy
+	Fields       []string               // Campos a dividir (para strategy field)
+	Pattern      string                 // Patrón de división (para strategy pattern)
+	ChunkSize    int                    // Tamaño de chunks (para strategy size)
+	Condition    interface{}            // Función de condición (para strategy condition)
+	Parameters   map[string]interface{} // Parámetros adicionales
+	KeepOriginal bool                   // Si mantener los datos originales
 }
 
 // SplitResult representa el resultado de una operación de división
 type SplitResult struct {
 	Parts    []interface{}          `json:"parts"`
-	Count    int                   `json:"count"`
-	Strategy string                `json:"strategy"`
+	Count    int                    `json:"count"`
+	Strategy string                 `json:"strategy"`
 	Metadata map[string]interface{} `json:"metadata"`
-	Original interface{}           `json:"original,omitempty"`
+	Original interface{}            `json:"original,omitempty"`
 }
 
 // Execute divide los datos según la estrategia especificada
@@ -51,6 +51,11 @@ func (sn *SplitNode) Execute(ctx context.Context, wm *WorkflowManager, data inte
 	var metadata = make(map[string]interface{})
 	var err error
 
+	// Validar que hay datos para dividir
+	if data == nil {
+		return nil, NewWorkflowError(sn.ID, sn.Type, "no data provided for split", fmt.Errorf("data is nil"))
+	}
+
 	// Aplicar estrategia de división
 	switch sn.Strategy {
 	case SplitByField:
@@ -62,9 +67,7 @@ func (sn *SplitNode) Execute(ctx context.Context, wm *WorkflowManager, data inte
 	case SplitByCondition:
 		parts, err = sn.splitByCondition(ctx, data, metadata)
 	default:
-		return nil, NewWorkflowError(sn.ID, sn.Type,
-			fmt.Sprintf("unsupported split strategy: %s", sn.Strategy),
-			fmt.Errorf("strategy %s not implemented", sn.Strategy))
+		return nil, NewWorkflowError(sn.ID, sn.Type, fmt.Sprintf("unsupported split strategy: %s", sn.Strategy), fmt.Errorf("invalid strategy"))
 	}
 
 	if err != nil {

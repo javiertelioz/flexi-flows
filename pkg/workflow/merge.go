@@ -19,10 +19,10 @@ const (
 // MergeNode representa un nodo que fusiona múltiples fuentes de datos
 type MergeNode struct {
 	Node[interface{}]
-	Sources     []string      // Campos fuente a fusionar
-	Strategy    MergeStrategy // Estrategia de fusión
+	Sources     []string               // Campos fuente a fusionar
+	Strategy    MergeStrategy          // Estrategia de fusión
 	CustomRules map[string]interface{} // Reglas personalizadas por campo
-	IgnoreEmpty bool         // Si ignorar valores vacíos
+	IgnoreEmpty bool                   // Si ignorar valores vacíos
 }
 
 // Execute fusiona datos de múltiples fuentes
@@ -32,6 +32,11 @@ func (mn *MergeNode) Execute(ctx context.Context, wm *WorkflowManager, data inte
 	case <-ctx.Done():
 		return nil, NewWorkflowError(mn.ID, mn.Type, "context cancelled before merge", ctx.Err())
 	default:
+	}
+
+	// Validar que tenemos datos para mergear
+	if data == nil {
+		return nil, NewWorkflowError(mn.ID, mn.Type, "no data provided for merge", fmt.Errorf("data is nil"))
 	}
 
 	// Convertir datos a map para facilitar fusión

@@ -19,6 +19,11 @@ func (b *BranchNode) Execute(ctx context.Context, wm *WorkflowManager, data inte
 	default:
 	}
 
+	// Validar que hay al menos un nodo para ejecutar
+	if len(b.Branches) == 0 {
+		return nil, NewWorkflowError(b.ID, b.Type, "no branches specified for branch execution", fmt.Errorf("empty branch list"))
+	}
+
 	fmt.Printf("Executing BranchNode: %s\n", b.ID)
 
 	if len(b.Branches) == 0 {

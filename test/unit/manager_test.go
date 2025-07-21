@@ -73,7 +73,7 @@ func (suite *WorkflowManagerTestSuite) whenWorkflowIsExecutedWithError() {
 func (suite *WorkflowManagerTestSuite) whenWorkflowIsExecutedWithNilStartNode() {
 	_, err := suite.wm.Execute("node1", "testdata")
 	suite.Error(err)
-	suite.Contains(err.Error(), "start node not found")
+	suite.Contains(err.Error(), "no start node found")
 }
 
 func (suite *WorkflowManagerTestSuite) whenNodeIsExecutedWithNilNode() {

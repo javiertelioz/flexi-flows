@@ -34,7 +34,7 @@ type FilterResult struct {
 	Metadata map[string]interface{} `json:"metadata"`
 }
 
-// Execute filtra los datos según las condiciones especificadas
+// Execute filtra los datos según los criterios definidos
 func (fn *FilterNode) Execute(ctx context.Context, wm *WorkflowManager, data interface{}) (interface{}, error) {
 	// Verificar si el contexto ha sido cancelado
 	select {

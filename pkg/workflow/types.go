@@ -1,8 +1,10 @@
 package workflow
 
 import (
+	"context"
 	"fmt"
 	"runtime"
+	"strings"
 	"time"
 )
 
@@ -26,6 +28,44 @@ const (
 	Split
 	Filter
 )
+
+// HookType define los tipos de hooks disponibles
+type HookType int
+
+const (
+	PreExecution HookType = iota
+	PostExecution
+	OnError
+	OnSuccess
+	OnCompletion
+	PreNode
+	PostNode
+	BeforeExecution // Alias para PreExecution
+	AfterExecution  // Alias para PostExecution
+	OnComplete      // Alias para OnCompletion
+)
+
+// String implementa el interfaz Stringer para HookType
+func (ht HookType) String() string {
+	switch ht {
+	case PreExecution:
+		return "pre_execution"
+	case PostExecution:
+		return "post_execution"
+	case OnError:
+		return "on_error"
+	case OnSuccess:
+		return "on_success"
+	case OnCompletion:
+		return "on_completion"
+	case PreNode:
+		return "pre_node"
+	case PostNode:
+		return "post_node"
+	default:
+		return "unknown"
+	}
+}
 
 // Alias para mantener compatibilidad y semántica mejorada
 const (
@@ -73,142 +113,202 @@ func (nt NodeType) IsValid() bool {
 	return nt >= Task && nt <= Filter
 }
 
-// HookType define los tipos de hooks disponibles
-type HookType string
+// TaskFunc define la firma de función para tareas
+type TaskFunc func(context.Context, interface{}) (interface{}, error)
 
-const (
-	BeforeExecution HookType = "before"
-	AfterExecution  HookType = "after"
-	OnSuccess       HookType = "success"
-	OnError         HookType = "error"
-	OnComplete      HookType = "complete"
-)
+// HookFunc define la firma de función para hooks
+type HookFunc func(HookContext) error
 
-// WorkflowError representa un error estructurado del workflow
-type WorkflowError struct {
-	NodeID    string                 `json:"node_id"`
-	NodeType  NodeType               `json:"node_type"`
-	Type      string                 `json:"type,omitempty"` // Campo Type que estaba faltando
-	Message   string                 `json:"message"`
-	Timestamp time.Time              `json:"timestamp"`
-	Context   map[string]interface{} `json:"context,omitempty"`
-	Stack     []string               `json:"stack,omitempty"`
-	Cause     error                  `json:"-"`
+// NodeConfig representa la configuración de un nodo
+type NodeConfig struct {
+	ID           string                 `json:"id" yaml:"id"`
+	Name         string                 `json:"name" yaml:"name"`
+	Type         NodeType               `json:"type" yaml:"type"`
+	Function     string                 `json:"function,omitempty" yaml:"function,omitempty"`
+	Dependencies []string               `json:"dependencies,omitempty" yaml:"dependencies,omitempty"`
+	Navigation   map[string]string      `json:"navigation,omitempty" yaml:"navigation,omitempty"`
+	Settings     map[string]interface{} `json:"settings,omitempty" yaml:"settings,omitempty"`
+
+	// Campos específicos para diferentes tipos de nodos
+	URL        string                 `json:"url,omitempty" yaml:"url,omitempty"`
+	Method     string                 `json:"method,omitempty" yaml:"method,omitempty"`
+	Headers    map[string]string      `json:"headers,omitempty" yaml:"headers,omitempty"`
+	Body       interface{}            `json:"body,omitempty" yaml:"body,omitempty"`
+	Duration   string                 `json:"duration,omitempty" yaml:"duration,omitempty"`
+	Condition  string                 `json:"condition,omitempty" yaml:"condition,omitempty"`
+	Collection string                 `json:"collection,omitempty" yaml:"collection,omitempty"`
+	Rules      []ValidationRule       `json:"rules,omitempty" yaml:"rules,omitempty"`
+	Tasks      []string               `json:"tasks,omitempty" yaml:"tasks,omitempty"`
+	Transform  map[string]interface{} `json:"transform,omitempty" yaml:"transform,omitempty"`
+	TrueNode   string                 `json:"true_node,omitempty" yaml:"true_node,omitempty"`
+	FalseNode  string                 `json:"false_node,omitempty" yaml:"false_node,omitempty"`
 }
-
-// Error implementa el interfaz error
-func (we *WorkflowError) Error() string {
-	return fmt.Sprintf("workflow error in node %s (%s): %s", we.NodeID, we.NodeType, we.Message)
-}
-
-// Unwrap permite usar errors.Is y errors.As
-func (we *WorkflowError) Unwrap() error {
-	return we.Cause
-}
-
-// NewWorkflowError crea un nuevo error de workflow con stack trace
-func NewWorkflowError(nodeID string, nodeType NodeType, message string, cause error) *WorkflowError {
-	stack := make([]string, 0, 10)
-	for i := 1; i < 10; i++ {
-		_, file, line, ok := runtime.Caller(i)
-		if !ok {
-			break
-		}
-		stack = append(stack, fmt.Sprintf("%s:%d", file, line))
-	}
-
-	return &WorkflowError{
-		NodeID:    nodeID,
-		NodeType:  nodeType,
-		Message:   message,
-		Timestamp: time.Now(),
-		Context:   make(map[string]interface{}),
-		Stack:     stack,
-		Cause:     cause,
-	}
-}
-
-// WithContext añade contexto adicional al error
-func (we *WorkflowError) WithContext(key string, value interface{}) *WorkflowError {
-	if we.Context == nil {
-		we.Context = make(map[string]interface{})
-	}
-	we.Context[key] = value
-	return we
-}
-
-// ExecutionContext representa el contexto de ejecución de un nodo
-type ExecutionContext struct {
-	WorkflowID  string                 `json:"workflow_id"`
-	NodeID      string                 `json:"node_id"`
-	ExecutionID string                 `json:"execution_id"`
-	Data        interface{}            `json:"data"`
-	Metadata    map[string]interface{} `json:"metadata"`
-	StartTime   time.Time              `json:"start_time"`
-	EndTime     *time.Time             `json:"end_time,omitempty"`
-}
-
-// HookContext representa el contexto disponible para los hooks
-type HookContext struct {
-	NodeID      string                 `json:"node_id"`
-	NodeType    NodeType               `json:"node_type"`
-	HookType    HookType               `json:"hook_type"`
-	Data        interface{}            `json:"data"`
-	Metadata    map[string]interface{} `json:"metadata"`
-	ExecutionID string                 `json:"execution_id"`
-	Timestamp   time.Time              `json:"timestamp"`
-}
-
-// NodeState representa el estado de ejecución de un nodo
-type NodeState string
-
-const (
-	StateReady     NodeState = "ready"
-	StateRunning   NodeState = "running"
-	StateCompleted NodeState = "completed"
-	StateFailed    NodeState = "failed"
-	StateSkipped   NodeState = "skipped"
-)
-
-// WorkflowState representa el estado general del workflow
-type WorkflowState string
-
-const (
-	WorkflowStateReady     WorkflowState = "ready"
-	WorkflowStateRunning   WorkflowState = "running"
-	WorkflowStateCompleted WorkflowState = "completed"
-	WorkflowStateFailed    WorkflowState = "failed"
-	WorkflowStatePaused    WorkflowState = "paused"
-)
 
 // ValidationRule representa una regla de validación
 type ValidationRule struct {
 	Field    string      `json:"field" yaml:"field"`
 	Type     string      `json:"type" yaml:"type"`
 	Required bool        `json:"required,omitempty" yaml:"required,omitempty"`
-	Min      interface{} `json:"min,omitempty" yaml:"min,omitempty"`
-	Max      interface{} `json:"max,omitempty" yaml:"max,omitempty"`
-	MinValue interface{} `json:"min_value,omitempty" yaml:"min_value,omitempty"` // Alias para Min
-	MaxValue interface{} `json:"max_value,omitempty" yaml:"max_value,omitempty"` // Alias para Max
 	Pattern  string      `json:"pattern,omitempty" yaml:"pattern,omitempty"`
-	Message  string      `json:"message,omitempty" yaml:"message,omitempty"` // Campo Message que faltaba
+	Min      int         `json:"min,omitempty" yaml:"min,omitempty"`
+	Max      int         `json:"max,omitempty" yaml:"max,omitempty"`
+	MinValue interface{} `json:"min_value,omitempty" yaml:"min_value,omitempty"`
+	MaxValue interface{} `json:"max_value,omitempty" yaml:"max_value,omitempty"`
+	Message  string      `json:"message,omitempty" yaml:"message,omitempty"`
 }
 
-// TaskFunc define la firma de una función de tarea
-type TaskFunc func(data map[string]interface{}) (map[string]interface{}, error)
+// WorkflowConfig representa la configuración completa del workflow
+type WorkflowConfig struct {
+	Name        string                 `json:"name" yaml:"name"`
+	Description string                 `json:"description,omitempty" yaml:"description,omitempty"`
+	Version     string                 `json:"version,omitempty" yaml:"version,omitempty"`
+	StartNode   string                 `json:"start_node" yaml:"start_node"`
+	Nodes       []NodeConfig           `json:"nodes" yaml:"nodes"`
+	Variables   map[string]interface{} `json:"variables,omitempty" yaml:"variables,omitempty"`
+	Settings    map[string]interface{} `json:"settings,omitempty" yaml:"settings,omitempty"`
+	Hooks       map[string]string      `json:"hooks,omitempty" yaml:"hooks,omitempty"`
+}
 
-// HookFunc define la firma de una función de hook simple
-type HookFunc func() error
+// ExecutionContext contiene el contexto de ejecución del workflow
+type ExecutionContext struct {
+	WorkflowID  string                 `json:"workflow_id"`
+	ExecutionID string                 `json:"execution_id"`
+	NodeID      string                 `json:"node_id"`
+	Data        interface{}            `json:"data"`
+	Variables   map[string]interface{} `json:"variables"`
+	StartTime   time.Time              `json:"start_time"`
+	EndTime     time.Time              `json:"end_time"` // Campo agregado para los tests
+	CurrentTime time.Time              `json:"current_time"`
+	Error       error                  `json:"error,omitempty"`
+	Metadata    map[string]interface{} `json:"metadata,omitempty"`
+}
 
-// HookFuncWithData define la firma de una función de hook con datos
-type HookFuncWithData func(data interface{}) error
+// HookContext contiene el contexto para hooks
+type HookContext struct {
+	Stage         string                 `json:"stage"`
+	WorkflowID    string                 `json:"workflow_id"`
+	ExecutionID   string                 `json:"execution_id"`
+	NodeID        string                 `json:"node_id,omitempty"`
+	NodeType      NodeType               `json:"node_type,omitempty"`
+	HookType      HookType               `json:"hook_type"`
+	Data          interface{}            `json:"data"`
+	Variables     map[string]interface{} `json:"variables"`
+	ExecutionTime time.Duration          `json:"execution_time"`
+	Error         error                  `json:"error,omitempty"`
+	Metadata      map[string]interface{} `json:"metadata,omitempty"`
+	Timestamp     time.Time              `json:"timestamp"`
+}
 
-// HookFuncWithContext define la firma de una función de hook con contexto completo
-type HookFuncWithContext func(ctx *HookContext) error
+// WorkflowError representa un error específico del workflow
+type WorkflowError struct {
+	Code       string                 `json:"code"`
+	Message    string                 `json:"message"`
+	NodeID     string                 `json:"node_id,omitempty"`
+	NodeType   NodeType               `json:"node_type,omitempty"` // Campo agregado para los tests
+	Cause      error                  `json:"cause,omitempty"`
+	Context    map[string]interface{} `json:"context,omitempty"`
+	Timestamp  time.Time              `json:"timestamp"`
+	StackTrace string                 `json:"stack_trace,omitempty"`
+	Stack      string                 `json:"stack,omitempty"` // Alias para StackTrace
+}
+
+func (e *WorkflowError) Error() string {
+	if e.NodeID != "" {
+		return fmt.Sprintf("[%s] %s (node: %s)", e.Code, e.Message, e.NodeID)
+	}
+	return fmt.Sprintf("[%s] %s", e.Code, e.Message)
+}
+
+func (e *WorkflowError) Unwrap() error {
+	return e.Cause
+}
+
+// NewWorkflowError crea un nuevo error de workflow
+func NewWorkflowError(nodeID string, nodeType NodeType, message string, cause error) *WorkflowError {
+	// Capturar stack trace
+	buf := make([]byte, 4096)
+	n := runtime.Stack(buf, false)
+	stackTrace := string(buf[:n])
+
+	return &WorkflowError{
+		Code:       nodeType.String(),
+		Message:    message,
+		NodeID:     nodeID,
+		NodeType:   nodeType, // Asignar el NodeType
+		Cause:      cause,
+		Context:    make(map[string]interface{}),
+		Timestamp:  time.Now(),
+		StackTrace: stackTrace,
+		Stack:      stackTrace, // Asignar Stack como alias de StackTrace
+	}
+}
+
+// WithContext agrega contexto adicional al error
+func (e *WorkflowError) WithContext(key string, value interface{}) *WorkflowError {
+	if e.Context == nil {
+		e.Context = make(map[string]interface{})
+	}
+	e.Context[key] = value
+	return e
+}
+
+// Tipos para validaciones avanzadas
+type AdvancedValidator struct {
+	MaxDataSize       int           `json:"max_data_size,omitempty"`
+	MaxValidationTime time.Duration `json:"max_validation_time,omitempty"`
+}
+
+type TypeConstraint struct {
+	Type      string      `json:"type"`
+	Required  bool        `json:"required"`
+	Min       interface{} `json:"min,omitempty"`
+	Max       interface{} `json:"max,omitempty"`
+	MinLength int         `json:"min_length,omitempty"`
+	MaxLength int         `json:"max_length,omitempty"`
+	Pattern   string      `json:"pattern,omitempty"`
+	Enum      []string    `json:"enum,omitempty"`
+}
+
+type AdvancedValidationResult struct {
+	Valid   bool                   `json:"valid"`
+	Errors  []ValidationError      `json:"errors"`
+	Data    interface{}            `json:"data"`
+	Summary map[string]interface{} `json:"summary"`
+	Cycles  [][]string             `json:"cycles,omitempty"`
+}
+
+type GraphDefinition struct {
+	Nodes []NodeConfig     `json:"nodes"`
+	Edges []EdgeDefinition `json:"edges"`
+}
+
+type EdgeDefinition struct {
+	From string `json:"from"`
+	To   string `json:"to"`
+}
+
+type ComplexSchema struct {
+	Properties map[string]PropertySchema `json:"properties"`
+}
+
+type PropertySchema struct {
+	Type       string                    `json:"type"`
+	Required   bool                      `json:"required"`
+	Min        interface{}               `json:"min,omitempty"`
+	Max        interface{}               `json:"max,omitempty"`
+	MinLength  int                       `json:"min_length,omitempty"`
+	MaxLength  int                       `json:"max_length,omitempty"`
+	MinItems   int                       `json:"min_items,omitempty"`
+	MaxItems   int                       `json:"max_items,omitempty"`
+	Pattern    string                    `json:"pattern,omitempty"`
+	Enum       []string                  `json:"enum,omitempty"`
+	Properties map[string]PropertySchema `json:"properties,omitempty"`
+	Items      *PropertySchema           `json:"items,omitempty"`
+}
 
 // ParseNodeType convierte un string a NodeType
 func ParseNodeType(s string) (NodeType, error) {
-	switch s {
+	switch strings.ToLower(s) {
 	case "task":
 		return Task, nil
 	case "subdag":

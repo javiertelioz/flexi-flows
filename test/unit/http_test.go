@@ -115,14 +115,14 @@ func (suite *HTTPNodeTestSuite) TestHTTPNodeExecuteErrorResponse() {
 
 	result, err := suite.httpNode.Execute(suite.ctx, suite.wm, nil)
 
+	// El HTTPNode retorna error cuando el status code >= 400
 	suite.Error(err)
-	suite.NotNil(result)
+	// El resultado es nil cuando hay error HTTP
+	suite.Nil(result)
 
-	resultMap, ok := result.(map[string]interface{})
-	suite.True(ok, "Result should be a map")
-
-	suite.Equal(500, resultMap["status_code"])
-	suite.False(resultMap["success"].(bool))
+	// Verificar que el error contiene información sobre el status code
+	suite.Contains(err.Error(), "500")
+	suite.Contains(err.Error(), "HTTP request failed")
 }
 
 func (suite *HTTPNodeTestSuite) TestHTTPNodeExecuteInvalidURL() {
