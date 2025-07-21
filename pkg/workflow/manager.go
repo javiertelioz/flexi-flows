@@ -305,6 +305,18 @@ func (wm *WorkflowManager) RegisterTask(name string, task interface{}) {
 	wm.tasks[name] = task
 }
 
+// GetRegisteredTasks retorna la lista de tareas registradas para auto-discovery
+func (wm *WorkflowManager) GetRegisteredTasks() []string {
+	wm.mu.Lock()
+	defer wm.mu.Unlock()
+
+	var tasks []string
+	for name := range wm.tasks {
+		tasks = append(tasks, name)
+	}
+	return tasks
+}
+
 // GetTask obtiene una tarea registrada por nombre
 func (wm *WorkflowManager) GetTask(name string) (interface{}, bool) {
 	wm.mu.Lock()
