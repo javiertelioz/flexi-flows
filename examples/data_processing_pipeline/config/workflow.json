@@ -1,0 +1,87 @@
+{
+  "name": "data_processing_pipeline",
+  "description": "Real-world data processing pipeline with HTTP API integration and batch processing",
+  "version": "1.0.0",
+  "start_node": "fetch",
+  "nodes": [
+    {
+      "id": "fetch",
+      "type": "task",
+      "function": "fetchUsers",
+      "description": "Fetch users from external API or mock data",
+      "config": {
+        "timeout": "30s",
+        "retry_count": 3
+      },
+      "next": ["validate"]
+    },
+    {
+      "id": "validate",
+      "type": "task",
+      "function": "validateUsers",
+      "description": "Validate each user in the collection",
+      "config": {
+        "timeout": "45s",
+        "batch_size": 10
+      },
+      "next": ["transform"]
+    },
+    {
+      "id": "transform",
+      "type": "task",
+      "function": "transformUsers",
+      "description": "Transform users to required format",
+      "config": {
+        "timeout": "60s"
+      },
+      "next": ["save"]
+    },
+    {
+      "id": "save",
+      "type": "task",
+      "function": "saveUsers",
+      "description": "Save processed users to database",
+      "config": {
+        "timeout": "120s",
+        "retry_count": 2
+      },
+      "next": ["report"]
+    },
+    {
+      "id": "report",
+      "type": "task",
+      "function": "generateReport",
+      "description": "Generate processing report",
+      "config": {
+        "timeout": "30s"
+      },
+      "next": []
+    }
+  ],
+  "edges": [
+    {
+      "from": "fetch",
+      "to": "validate"
+    },
+    {
+      "from": "validate",
+      "to": "transform"
+    },
+    {
+      "from": "transform",
+      "to": "save"
+    },
+    {
+      "from": "save",
+      "to": "report"
+    }
+  ],
+  "settings": {
+    "max_execution_time": "10m",
+    "enable_metrics": true,
+    "enable_logging": true,
+    "log_level": "INFO",
+    "parallel_processing": true,
+    "max_concurrent_tasks": 5
+  }
+}

@@ -1,0 +1,96 @@
+{
+  "name": "conditional_order_processing",
+  "description": "Order processing workflow with conditional branching based on customer type",
+  "version": "1.0.0",
+  "start_node": "classify",
+  "nodes": [
+    {
+      "id": "classify",
+      "type": "conditional",
+      "function": "classifyCustomer",
+      "description": "Classify customer and determine processing branch",
+      "config": {
+        "timeout": "30s"
+      },
+      "conditions": [
+        {
+          "condition": "category == 'vip'",
+          "next": "vip_process"
+        },
+        {
+          "condition": "category == 'regular'",
+          "next": "regular_process"
+        },
+        {
+          "condition": "category == 'new'",
+          "next": "new_process"
+        },
+        {
+          "condition": "category == 'invalid'",
+          "next": "error_handle"
+        }
+      ]
+    },
+    {
+      "id": "vip_process",
+      "type": "task",
+      "function": "processVIPOrder",
+      "description": "Process VIP customer order",
+      "config": {
+        "timeout": "60s",
+        "priority": "high"
+      },
+      "next": ["finalize"]
+    },
+    {
+      "id": "regular_process",
+      "type": "task",
+      "function": "processRegularOrder",
+      "description": "Process regular customer order",
+      "config": {
+        "timeout": "90s"
+      },
+      "next": ["finalize"]
+    },
+    {
+      "id": "new_process",
+      "type": "task",
+      "function": "processNewCustomer",
+      "description": "Process new customer order with verification",
+      "config": {
+        "timeout": "120s"
+      },
+      "next": ["finalize"]
+    },
+    {
+      "id": "error_handle",
+      "type": "task",
+      "function": "handleInvalidOrder",
+      "description": "Handle invalid order",
+      "config": {
+        "timeout": "45s"
+      },
+      "next": ["finalize"]
+    },
+    {
+      "id": "finalize",
+      "type": "task",
+      "function": "finalizeOrder",
+      "description": "Finalize order processing",
+      "config": {
+        "timeout": "30s"
+      },
+      "next": []
+    }
+  ],
+  "edges": [
+    {"from": "classify", "to": "vip_process"},
+    {"from": "classify", "to": "regular_process"},
+    {"from": "classify", "to": "new_process"},
+    {"from": "classify", "to": "error_handle"},
+    {"from": "vip_process", "to": "finalize"},
+    {"from": "regular_process", "to": "finalize"},
+    {"from": "new_process", "to": "finalize"},
+    {"from": "error_handle", "to": "finalize"}
+  ]
+}

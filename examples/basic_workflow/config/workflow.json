@@ -1,0 +1,71 @@
+{
+  "name": "basic_user_processing_workflow",
+  "description": "Basic workflow demonstrating sequential task execution with user data processing",
+  "version": "1.0.0",
+  "start_node": "validate",
+  "nodes": [
+    {
+      "id": "validate",
+      "type": "task",
+      "function": "validateData",
+      "description": "Validate user input data",
+      "config": {
+        "timeout": "30s",
+        "retry_count": 3
+      },
+      "next": ["transform"]
+    },
+    {
+      "id": "transform",
+      "type": "task",
+      "function": "transformData",
+      "description": "Transform user data to required format",
+      "config": {
+        "timeout": "15s"
+      },
+      "next": ["save"]
+    },
+    {
+      "id": "save",
+      "type": "task",
+      "function": "saveData",
+      "description": "Save processed data to storage",
+      "config": {
+        "timeout": "45s",
+        "retry_count": 2
+      },
+      "next": ["notify"]
+    },
+    {
+      "id": "notify",
+      "type": "task",
+      "function": "notifyUser",
+      "description": "Send notification to user",
+      "config": {
+        "timeout": "20s",
+        "retry_count": 1
+      },
+      "next": []
+    }
+  ],
+  "edges": [
+    {
+      "from": "validate",
+      "to": "transform"
+    },
+    {
+      "from": "transform",
+      "to": "save"
+    },
+    {
+      "from": "save",
+      "to": "notify"
+    }
+  ],
+  "settings": {
+    "max_execution_time": "5m",
+    "enable_metrics": true,
+    "enable_logging": true,
+    "log_level": "INFO"
+  }
+}

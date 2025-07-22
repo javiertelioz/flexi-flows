@@ -1,0 +1,27 @@
+{
+  "name": "parallel_weather_processing",
+  "description": "Parallel weather data fetching and aggregation",
+  "version": "1.0.0",
+  "start_node": "fetch_weather",
+  "nodes": [
+    {
+      "id": "fetch_weather",
+      "type": "task",
+      "function": "fetchWeatherData",
+      "description": "Fetch weather data for multiple cities",
+      "config": {
+        "timeout": "60s"
+      },
+      "next": ["aggregate_weather"]
+    },
+    {
+      "id": "aggregate_weather",
+      "type": "task",
+      "function": "aggregateWeatherData",
+      "description": "Aggregate all weather data",
+      "config": {
+        "timeout": "30s"
+      }
+    }
+  ]
+}
