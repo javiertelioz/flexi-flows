@@ -1,96 +1,114 @@
 {
-  "name": "conditional_order_processing",
+  "name": "ConditionalBranchingWorkflow",
   "description": "Order processing workflow with conditional branching based on customer type",
   "version": "1.0.0",
-  "start_node": "classify",
+  "start_node": "classifyOrder",
+  "settings": {
+    "max_retries": 3,
+    "timeout": "30s",
+    "enable_logging": true
+  },
+  "variables": {
+    "vip_discount": 0.15,
+    "regular_discount": 0.05,
+    "new_customer_bonus": 200
+  },
   "nodes": [
     {
-      "id": "classify",
-      "type": "conditional",
-      "function": "classifyCustomer",
-      "description": "Classify customer and determine processing branch",
-      "config": {
-        "timeout": "30s"
-      },
-      "conditions": [
-        {
-          "condition": "category == 'vip'",
-          "next": "vip_process"
-        },
-        {
-          "condition": "category == 'regular'",
-          "next": "regular_process"
-        },
-        {
-          "condition": "category == 'new'",
-          "next": "new_process"
-        },
-        {
-          "condition": "category == 'invalid'",
-          "next": "error_handle"
-        }
+      "id": "classifyOrder",
+      "type": "task",
+      "name": "Classify Order",
+      "description": "Classify order based on customer type and order value",
+      "function": "classifyOrder",
+      "next": [
+        "vipCondition"
       ]
     },
     {
-      "id": "vip_process",
+      "id": "vipCondition",
+      "type": "conditional",
+      "name": "VIP Customer Check",
+      "description": "Check if customer is VIP",
+      "condition": "isVIPCustomer",
+      "true_path": [
+        "processVIPBranch"
+      ],
+      "false_path": [
+        "checkRegularCustomer"
+      ]
+    },
+    {
+      "id": "checkRegularCustomer",
+      "type": "conditional",
+      "name": "Regular Customer Check",
+      "description": "Check if customer is regular",
+      "condition": "isRegularCustomer",
+      "true_path": [
+        "processRegularBranch"
+      ],
+      "false_path": [
+        "checkNewCustomer"
+      ]
+    },
+    {
+      "id": "checkNewCustomer",
+      "type": "conditional",
+      "name": "New Customer Check",
+      "description": "Check if customer is new",
+      "condition": "isNewCustomer",
+      "true_path": [
+        "processNewCustomerBranch"
+      ],
+      "false_path": [
+        "handleInvalidBranch"
+      ]
+    },
+    {
+      "id": "processVIPBranch",
       "type": "task",
+      "name": "Process VIP Order",
+      "description": "Process VIP customer order with premium benefits",
       "function": "processVIPOrder",
-      "description": "Process VIP customer order",
-      "config": {
-        "timeout": "60s",
-        "priority": "high"
-      },
-      "next": ["finalize"]
+      "next": [
+        "finalizeOrder"
+      ]
     },
     {
-      "id": "regular_process",
+      "id": "processRegularBranch",
       "type": "task",
-      "function": "processRegularOrder",
+      "name": "Process Regular Order",
       "description": "Process regular customer order",
-      "config": {
-        "timeout": "90s"
-      },
-      "next": ["finalize"]
+      "function": "processRegularOrder",
+      "next": [
+        "finalizeOrder"
+      ]
     },
     {
-      "id": "new_process",
+      "id": "processNewCustomerBranch",
       "type": "task",
+      "name": "Process New Customer",
+      "description": "Process new customer order with welcome benefits",
       "function": "processNewCustomer",
-      "description": "Process new customer order with verification",
-      "config": {
-        "timeout": "120s"
-      },
-      "next": ["finalize"]
+      "next": [
+        "finalizeOrder"
+      ]
     },
     {
-      "id": "error_handle",
+      "id": "handleInvalidBranch",
       "type": "task",
+      "name": "Handle Invalid Order",
+      "description": "Handle invalid orders and customer types",
       "function": "handleInvalidOrder",
-      "description": "Handle invalid order",
-      "config": {
-        "timeout": "45s"
-      },
-      "next": ["finalize"]
+      "next": [
+        "finalizeOrder"
+      ]
     },
     {
-      "id": "finalize",
+      "id": "finalizeOrder",
       "type": "task",
-      "function": "finalizeOrder",
-      "description": "Finalize order processing",
-      "config": {
-        "timeout": "30s"
-      },
-      "next": []
+      "name": "Finalize Order",
+      "description": "Finalize order processing and prepare for fulfillment",
+      "function": "finalizeOrder"
     }
-  ],
-  "edges": [
-    {"from": "classify", "to": "vip_process"},
-    {"from": "classify", "to": "regular_process"},
-    {"from": "classify", "to": "new_process"},
-    {"from": "classify", "to": "error_handle"},
-    {"from": "vip_process", "to": "finalize"},
-    {"from": "regular_process", "to": "finalize"},
-    {"from": "new_process", "to": "finalize"},
-    {"from": "error_handle", "to": "finalize"}
   ]
 }
