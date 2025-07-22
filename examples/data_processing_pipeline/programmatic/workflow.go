@@ -9,84 +9,115 @@ import (
 	"github.com/javiertelioz/flexi-flows/pkg/workflow/config"
 )
 
-// BuildDataPipelineProgrammatically creates the data processing pipeline entirely through code
-func BuildDataPipelineProgrammatically() *workflow.WorkflowManager {
+// ExecuteDataProcessingPipeline creates and executes the data processing pipeline programmatically
+func ExecuteDataProcessingPipeline(inputData interface{}) (*workflow.ExecutionResult, error) {
+	fmt.Println("🔧 Building data processing pipeline programmatically...")
+
+	// Create workflow manager
 	wm := workflow.NewWorkflowManager()
 
-	// Register tasks manually
-	wm.RegisterTask("fetchUsers", tasks.FetchUsers)
-	wm.RegisterTask("validateUsers", tasks.ValidateUsers)
-	wm.RegisterTask("transformUsers", tasks.TransformUsers)
-	wm.RegisterTask("saveUsers", tasks.SaveUsers)
-	wm.RegisterTask("generateReport", tasks.GenerateReport)
+	// Register all tasks
+	wm.RegisterTask("extractData", tasks.ExtractData)
+	wm.RegisterTask("validateData", tasks.ValidateData)
+	wm.RegisterTask("transformData", tasks.TransformData)
+	wm.RegisterTask("enrichData", tasks.EnrichData)
+	wm.RegisterTask("filterData", tasks.FilterData)
+	wm.RegisterTask("aggregateData", tasks.AggregateData)
+	wm.RegisterTask("saveData", tasks.SaveData)
 
 	// Create workflow configuration programmatically
-	cfg := &config.WorkflowConfig{
-		Name:        "data_processing_pipeline_programmatic",
-		Description: "Data processing pipeline built programmatically",
-		Version:     "1.0.0",
-		StartNode:   "fetch",
-		Nodes: []config.NodeConfig{
-			{
-				ID:       "fetch",
-				Type:     "task",
-				Function: "fetchUsers",
-			},
-			{
-				ID:       "validate",
-				Type:     "task",
-				Function: "validateUsers",
-			},
-			{
-				ID:       "transform",
-				Type:     "task",
-				Function: "transformUsers",
-			},
-			{
-				ID:       "save",
-				Type:     "task",
-				Function: "saveUsers",
-			},
-			{
-				ID:       "report",
-				Type:     "task",
-				Function: "generateReport",
-			},
-		},
-		Edges: []config.EdgeConfig{
-			{From: "fetch", To: "validate"},
-			{From: "validate", To: "transform"},
-			{From: "transform", To: "save"},
-			{From: "save", To: "report"},
-		},
-	}
+	cfg := buildDataPipelineConfig()
 
-	// Build workflow from config
+	// Build from configuration
 	err := wm.BuildFromConfig(cfg)
 	if err != nil {
-		fmt.Printf("Failed to build workflow: %v\n", err)
-		return nil
+		return nil, fmt.Errorf("failed to build workflow: %w", err)
 	}
 
-	return wm
+	// Execute the workflow
+	ctx := context.Background()
+	return wm.ExecuteWithContext(ctx, "extractData", inputData)
 }
 
-// ExecuteDataPipelineWorkflow runs the data processing pipeline
-func ExecuteDataPipelineWorkflow(inputData interface{}) (*workflow.ExecutionResult, error) {
-	wm := BuildDataPipelineProgrammatically()
-	if wm == nil {
-		return nil, fmt.Errorf("failed to build workflow")
+func buildDataPipelineConfig() *config.WorkflowConfig {
+	cfg := &config.WorkflowConfig{
+		Name:        "DataProcessingPipelineProgrammatic",
+		Description: "Complete data processing pipeline built programmatically",
+		Version:     "1.0.0",
+		StartNode:   "extractData",
+		Settings: config.WorkflowSettings{
+			MaxRetries:  3,
+			Timeout:     "60s",
+			EnableDebug: true,
+		},
+		Variables: map[string]interface{}{
+			"batch_size":           10,
+			"validation_threshold": 0.8,
+			"min_user_score":       3.0,
+		},
+		Nodes: []config.NodeConfig{
+			{
+				ID:          "extractData",
+				Type:        "task",
+				Name:        "Extract Data",
+				Description: "Extract data from various sources",
+				Function:    "extractData",
+				Next:        []string{"validateData"},
+			},
+			{
+				ID:          "validateData",
+				Type:        "task",
+				Name:        "Validate Data",
+				Description: "Validate extracted data for completeness",
+				Function:    "validateData",
+				Next:        []string{"transformData"},
+			},
+			{
+				ID:          "transformData",
+				Type:        "task",
+				Name:        "Transform Data",
+				Description: "Transform and normalize data fields",
+				Function:    "transformData",
+				Next:        []string{"enrichData"},
+			},
+			{
+				ID:          "enrichData",
+				Type:        "task",
+				Name:        "Enrich Data",
+				Description: "Enrich data with additional information",
+				Function:    "enrichData",
+				Next:        []string{"filterData"},
+			},
+			{
+				ID:          "filterData",
+				Type:        "task",
+				Name:        "Filter Data",
+				Description: "Filter data based on business rules",
+				Function:    "filterData",
+				Next:        []string{"aggregateData"},
+			},
+			{
+				ID:          "aggregateData",
+				Type:        "task",
+				Name:        "Aggregate Data",
+				Description: "Aggregate and summarize processed data",
+				Function:    "aggregateData",
+				Next:        []string{"saveData"},
+			},
+			{
+				ID:          "saveData",
+				Type:        "task",
+				Name:        "Save Data",
+				Description: "Save processed data to storage",
+				Function:    "saveData",
+			},
+		},
 	}
 
-	ctx := context.Background()
+	fmt.Println("   ✅ Programmatic pipeline configuration built successfully")
+	fmt.Println("   📊 Pipeline structure:")
+	fmt.Println("      extractData → validateData → transformData → enrichData")
+	fmt.Println("      → filterData → aggregateData → saveData")
 
-	fmt.Println("🔧 Executing data processing pipeline built programmatically...")
-	result, err := wm.ExecuteWithContext(ctx, "fetch", inputData)
-
-	if err != nil {
-		return nil, fmt.Errorf("data pipeline execution failed: %w", err)
-	}
-
-	fmt.Println("✅ Data processing pipeline completed successfully!")
-	return result, nil
+	return cfg
 }

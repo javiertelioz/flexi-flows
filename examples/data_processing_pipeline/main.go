@@ -10,7 +10,6 @@ import (
 	"github.com/javiertelioz/flexi-flows/examples/data_processing_pipeline/programmatic"
 	"github.com/javiertelioz/flexi-flows/examples/data_processing_pipeline/tasks"
 	"github.com/javiertelioz/flexi-flows/pkg/workflow"
-	"github.com/javiertelioz/flexi-flows/pkg/workflow/config"
 )
 
 func main() {
@@ -51,54 +50,27 @@ func main() {
 	}
 
 	if err != nil {
-		log.Fatalf("❌ Data pipeline execution failed: %v", err)
+		log.Fatalf("❌ Data processing pipeline execution failed: %v", err)
 	}
 
-	// Pretty print results
-	fmt.Printf("\n🎉 Data Processing Pipeline completed successfully!\n")
+	// Display results
+	fmt.Printf("✅ Workflow completed successfully!\n")
+	fmt.Printf("\n🎉 Data Processing Pipeline completed!\n")
 	fmt.Printf("📈 Execution Details:\n")
-	if result.NodeID != "" {
-		fmt.Printf("  - Node ID: %s\n", result.NodeID)
-	}
-	if result.Duration > 0 {
-		fmt.Printf("  - Duration: %d ms\n", result.Duration)
-	}
+	fmt.Printf("  - Node ID: %s\n", result.NodeID)
 	fmt.Printf("  - Success: %t\n", result.Success)
-	if result.Timestamp > 0 {
-		fmt.Printf("  - Timestamp: %d\n", result.Timestamp)
-	}
+	fmt.Printf("  - Timestamp: %d\n", result.Timestamp)
 
-	// Extract and display key metrics
+	// Pretty print result
 	if result.Data != nil {
-		if dataMap, ok := result.Data.(map[string]interface{}); ok {
-			fmt.Printf("\n📊 Processing Summary:\n")
-
-			if summary, ok := dataMap["processing_summary"].(map[string]interface{}); ok {
-				fmt.Printf("  - Total Users: %v\n", summary["total_users"])
-				fmt.Printf("  - Valid Users: %v\n", summary["valid_users"])
-				fmt.Printf("  - Invalid Users: %v\n", summary["invalid_users"])
-				fmt.Printf("  - Saved Users: %v\n", summary["saved_users"])
-				fmt.Printf("  - Domains Found: %v\n", summary["domains_found"])
-				fmt.Printf("  - Batch ID: %v\n", summary["batch_id"])
-			}
-
-			if validationErrors, ok := dataMap["validation_errors"].([]interface{}); ok && len(validationErrors) > 0 {
-				fmt.Printf("\n⚠️  Validation Issues:\n")
-				for _, err := range validationErrors {
-					fmt.Printf("  - %v\n", err)
-				}
-			}
-		}
-
-		// Pretty print full result for debugging (commented out by default)
-		// jsonResult, _ := json.MarshalIndent(result.Data, "", "  ")
-		// fmt.Printf("\n📋 Full Result:\n%s\n", jsonResult)
+		jsonResult, _ := json.MarshalIndent(result.Data, "", "  ")
+		fmt.Printf("\n📋 Final Result:\n%s\n", jsonResult)
 	}
 }
 
 func runProgrammaticMode(inputData interface{}) (*workflow.ExecutionResult, error) {
 	fmt.Println("🔧 Running in PROGRAMMATIC mode...")
-	return programmatic.ExecuteDataPipelineWorkflow(inputData)
+	return programmatic.ExecuteDataProcessingPipeline(inputData)
 }
 
 func runConfigMode(inputData interface{}) (*workflow.ExecutionResult, error) {
@@ -107,27 +79,23 @@ func runConfigMode(inputData interface{}) (*workflow.ExecutionResult, error) {
 	wm := workflow.NewWorkflowManager()
 
 	// Register tasks
-	wm.RegisterTask("fetchUsers", tasks.FetchUsers)
-	wm.RegisterTask("validateUsers", tasks.ValidateUsers)
-	wm.RegisterTask("transformUsers", tasks.TransformUsers)
-	wm.RegisterTask("saveUsers", tasks.SaveUsers)
-	wm.RegisterTask("generateReport", tasks.GenerateReport)
+	wm.RegisterTask("extractData", tasks.ExtractData)
+	wm.RegisterTask("validateData", tasks.ValidateData)
+	wm.RegisterTask("transformData", tasks.TransformData)
+	wm.RegisterTask("enrichData", tasks.EnrichData)
+	wm.RegisterTask("filterData", tasks.FilterData)
+	wm.RegisterTask("aggregateData", tasks.AggregateData)
+	wm.RegisterTask("saveData", tasks.SaveData)
 
-	// Load workflow from JSON config
+	// Load workflow from config
 	err := wm.LoadFromConfig("./config/workflow.json")
 	if err != nil {
 		return nil, fmt.Errorf("failed to load config: %w", err)
 	}
 
+	// Execute workflow
 	ctx := context.Background()
-	result, err := wm.ExecuteWithContext(ctx, "fetch", inputData)
-
-	if err != nil {
-		return nil, fmt.Errorf("config workflow execution failed: %w", err)
-	}
-
-	fmt.Println("✅ Config workflow completed successfully!")
-	return result, nil
+	return wm.ExecuteWithContext(ctx, "extractData", inputData)
 }
 
 func runAutoDiscoveryMode(inputData interface{}) (*workflow.ExecutionResult, error) {
@@ -135,69 +103,47 @@ func runAutoDiscoveryMode(inputData interface{}) (*workflow.ExecutionResult, err
 
 	wm := workflow.NewWorkflowManager()
 
-	// Register tasks manually (same strategy as basic_workflow)
-	wm.RegisterTask("fetchUsers", tasks.FetchUsers)
-	wm.RegisterTask("validateUsers", tasks.ValidateUsers)
-	wm.RegisterTask("transformUsers", tasks.TransformUsers)
-	wm.RegisterTask("saveUsers", tasks.SaveUsers)
-	wm.RegisterTask("generateReport", tasks.GenerateReport)
+	// First, register tasks manually to ensure they're available
+	fmt.Println("📝 Registering tasks manually as fallback...")
+	wm.RegisterTask("extractData", tasks.ExtractData)
+	wm.RegisterTask("validateData", tasks.ValidateData)
+	wm.RegisterTask("transformData", tasks.TransformData)
+	wm.RegisterTask("enrichData", tasks.EnrichData)
+	wm.RegisterTask("filterData", tasks.FilterData)
+	wm.RegisterTask("aggregateData", tasks.AggregateData)
+	wm.RegisterTask("saveData", tasks.SaveData)
+	fmt.Println("✅ Manual task registration completed")
 
-	fmt.Printf("🔍 Auto-discovered (manual) tasks: fetchUsers, validateUsers, transformUsers, saveUsers, generateReport\n")
+	// Then try auto-discovery as an additional feature
+	fmt.Println("🔍 Attempting auto-discovery...")
+	autodiscoverer := workflow.NewAutoDiscoverer()
 
-	// Create workflow configuration using the discovered tasks
-	cfg := &config.WorkflowConfig{
-		Name:        "data_pipeline_autodiscovery_workflow",
-		Description: "Data processing pipeline with auto-discovery",
-		Version:     "1.0.0",
-		StartNode:   "fetch",
-		Nodes: []config.NodeConfig{
-			{
-				ID:       "fetch",
-				Type:     "task",
-				Function: "fetchUsers",
-			},
-			{
-				ID:       "validate",
-				Type:     "task",
-				Function: "validateUsers",
-			},
-			{
-				ID:       "transform",
-				Type:     "task",
-				Function: "transformUsers",
-			},
-			{
-				ID:       "save",
-				Type:     "task",
-				Function: "saveUsers",
-			},
-			{
-				ID:       "report",
-				Type:     "task",
-				Function: "generateReport",
-			},
-		},
-		Edges: []config.EdgeConfig{
-			{From: "fetch", To: "validate"},
-			{From: "validate", To: "transform"},
-			{From: "transform", To: "save"},
-			{From: "save", To: "report"},
-		},
-	}
-
-	// Build workflow from config
-	err := wm.BuildFromConfig(cfg)
+	// Scan the tasks package for functions with annotations
+	err := autodiscoverer.ScanPackage("./tasks")
 	if err != nil {
-		return nil, fmt.Errorf("failed to build auto-discovery workflow: %w", err)
+		fmt.Printf("⚠️  Auto-discovery scanning failed: %v\n", err)
+	} else {
+		fmt.Println("✅ Auto-discovery scan completed")
 	}
 
+	// Register discovered functions with the workflow manager
+	err = autodiscoverer.RegisterInManager(wm)
+	if err != nil {
+		fmt.Printf("⚠️  Auto-discovery registration failed: %v\n", err)
+	} else {
+		fmt.Println("✅ Auto-discovery registration completed")
+	}
+
+	// Load workflow from config
+	fmt.Println("📋 Loading configuration...")
+	err = wm.LoadFromConfig("./config/workflow.json")
+	if err != nil {
+		return nil, fmt.Errorf("failed to load config: %w", err)
+	}
+	fmt.Println("✅ Configuration loaded successfully")
+
+	// Execute workflow
+	fmt.Println("▶️  Starting workflow execution...")
 	ctx := context.Background()
-	result, err := wm.ExecuteWithContext(ctx, "fetch", inputData)
-
-	if err != nil {
-		return nil, fmt.Errorf("auto-discovery workflow execution failed: %w", err)
-	}
-
-	fmt.Println("✅ Auto-discovery workflow completed successfully!")
-	return result, nil
+	return wm.ExecuteWithContext(ctx, "extractData", inputData)
 }

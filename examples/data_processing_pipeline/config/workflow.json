@@ -1,87 +1,74 @@
 {
-  "name": "data_processing_pipeline",
-  "description": "Real-world data processing pipeline with HTTP API integration and batch processing",
+  "name": "DataProcessingPipeline",
+  "description": "Complete data processing pipeline with extraction, validation, transformation, enrichment, filtering, aggregation and storage",
   "version": "1.0.0",
-  "start_node": "fetch",
+  "start_node": "extractData",
+  "settings": {
+    "max_retries": 3,
+    "timeout": "60s",
+    "enable_debug": true
+  },
+  "variables": {
+    "batch_size": 10,
+    "validation_threshold": 0.8,
+    "min_user_score": 3.0
+  },
   "nodes": [
     {
-      "id": "fetch",
+      "id": "extractData",
       "type": "task",
-      "function": "fetchUsers",
-      "description": "Fetch users from external API or mock data",
-      "config": {
-        "timeout": "30s",
-        "retry_count": 3
-      },
-      "next": ["validate"]
+      "name": "Extract Data",
+      "description": "Extract data from various sources (API, mock, database)",
+      "function": "extractData",
+      "next": ["validateData"]
     },
     {
-      "id": "validate",
+      "id": "validateData",
       "type": "task",
-      "function": "validateUsers",
-      "description": "Validate each user in the collection",
-      "config": {
-        "timeout": "45s",
-        "batch_size": 10
-      },
-      "next": ["transform"]
+      "name": "Validate Data",
+      "description": "Validate extracted data for completeness and correctness",
+      "function": "validateData",
+      "next": ["transformData"]
     },
     {
-      "id": "transform",
+      "id": "transformData",
       "type": "task",
-      "function": "transformUsers",
-      "description": "Transform users to required format",
-      "config": {
-        "timeout": "60s"
-      },
-      "next": ["save"]
+      "name": "Transform Data",
+      "description": "Transform and normalize data fields",
+      "function": "transformData",
+      "next": ["enrichData"]
     },
     {
-      "id": "save",
+      "id": "enrichData",
       "type": "task",
-      "function": "saveUsers",
-      "description": "Save processed users to database",
-      "config": {
-        "timeout": "120s",
-        "retry_count": 2
-      },
-      "next": ["report"]
+      "name": "Enrich Data",
+      "description": "Enrich data with additional information",
+      "function": "enrichData",
+      "next": ["filterData"]
     },
     {
-      "id": "report",
+      "id": "filterData",
       "type": "task",
-      "function": "generateReport",
-      "description": "Generate processing report",
-      "config": {
-        "timeout": "30s"
-      },
-      "next": []
+      "name": "Filter Data",
+      "description": "Filter data based on business rules",
+      "function": "filterData",
+      "next": ["aggregateData"]
+    },
+    {
+      "id": "aggregateData",
+      "type": "task",
+      "name": "Aggregate Data",
+      "description": "Aggregate and summarize processed data",
+      "function": "aggregateData",
+      "next": ["saveData"]
+    },
+    {
+      "id": "saveData",
+      "type": "task",
+      "name": "Save Data",
+      "description": "Save processed data to storage",
+      "function": "saveData"
     }
-  ],
-  "edges": [
-    {
-      "from": "fetch",
-      "to": "validate"
-    },
-    {
-      "from": "validate",
-      "to": "transform"
-    },
-    {
-      "from": "transform",
-      "to": "save"
-    },
-    {
-      "from": "save",
-      "to": "report"
-    }
-  ],
-  "settings": {
-    "max_execution_time": "10m",
-    "enable_metrics": true,
-    "enable_logging": true,
-    "log_level": "INFO",
-    "parallel_processing": true,
-    "max_concurrent_tasks": 5
-  }
+  ]
 }
+
