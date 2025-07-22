@@ -1,0 +1,66 @@
+{
+  "name": "MicroservicesOrchestration",
+  "description": "Orchestrates order processing across multiple microservices",
+  "version": "1.0.0",
+  "startNode": "validateUser",
+  "settings": {
+    "maxRetries": 3,
+    "timeout": "30s",
+    "enableDebug": true
+  },
+  "variables": {
+    "payment_timeout": "5s",
+    "inventory_timeout": "3s",
+    "notification_retry": 2
+  },
+  "nodes": [
+    {
+      "id": "validateUser",
+      "type": "task",
+      "name": "Validate User",
+      "description": "Validate user credentials and permissions",
+      "function": "validateUser",
+      "next": ["checkInventory"]
+    },
+    {
+      "id": "checkInventory",
+      "type": "task",
+      "name": "Check Inventory",
+      "description": "Check product availability in inventory service",
+      "function": "checkInventory",
+      "next": ["reserveInventory"]
+    },
+    {
+      "id": "reserveInventory",
+      "type": "task",
+      "name": "Reserve Inventory",
+      "description": "Reserve items in inventory for the order",
+      "function": "reserveInventory",
+      "next": ["processPayment"]
+    },
+    {
+      "id": "processPayment",
+      "type": "task",
+      "name": "Process Payment",
+      "description": "Process payment through payment service",
+      "function": "processPayment",
+      "next": ["createShipment"]
+    },
+    {
+      "id": "createShipment",
+      "type": "task",
+      "name": "Create Shipment",
+      "description": "Create shipment in logistics service",
+      "function": "createShipment",
+      "next": ["sendNotification"]
+    },
+    {
+      "id": "sendNotification",
+      "type": "task",
+      "name": "Send Notification",
+      "description": "Send confirmation notification to customer",
+      "function": "sendNotification",
+      "next": []
+    }
+  ]
+}
