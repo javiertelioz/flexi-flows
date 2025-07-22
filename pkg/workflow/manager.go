@@ -120,15 +120,15 @@ func (wm *WorkflowManager) ExecuteWithContext(ctx context.Context, startNodeID s
 		return nil, fmt.Errorf("before execution hooks failed: %w", err)
 	}
 
-	// Ejecutar el workflow
-	result, err := wm.ExecuteNodeWithContext(ctx, startNode, initialData)
+	// Ejecutar la cadena completa de nodos
+	result, finalNodeID, err := wm.executeNodeChain(ctx, startNode, initialData)
 
 	duration := time.Since(startTime)
 	success := err == nil
 
-	// Registrar métricas
+	// Registrar métricas para el nodo final
 	if wm.metrics != nil {
-		wm.metrics.RecordNodeExecution(startNode.GetID(), startNode.GetType(), duration, success)
+		wm.metrics.RecordNodeExecution(finalNodeID, startNode.GetType(), duration, success)
 	}
 
 	// Ejecutar hooks after execution
@@ -136,42 +136,25 @@ func (wm *WorkflowManager) ExecuteWithContext(ctx context.Context, startNodeID s
 	hookCtx.Data = result
 	hookCtx.Metadata["duration_ms"] = duration.Milliseconds()
 	hookCtx.Metadata["success"] = success
+	hookCtx.Metadata["final_node_id"] = finalNodeID
 
 	if success {
 		hookCtx.HookType = OnSuccess
 		if hookErr := wm.hookManager.ExecuteHooks(ctx, OnSuccess, hookCtx); hookErr != nil {
 			wm.logger.Log(WARN, "success hooks failed", map[string]interface{}{
 				"error":   hookErr.Error(),
-				"node_id": startNode.GetID(),
+				"node_id": finalNodeID,
 			})
 		}
 	} else {
 		hookCtx.HookType = OnError
 		hookCtx.Metadata["error"] = err.Error()
 		if hookErr := wm.hookManager.ExecuteHooks(ctx, OnError, hookCtx); hookErr != nil {
-			wm.logger.Log(WARN, "error hooks failed", map[string]interface{}{
+			wm.logger.Log(WARN, "after execution hooks failed", map[string]interface{}{
 				"error":   hookErr.Error(),
-				"node_id": startNode.GetID(),
+				"node_id": finalNodeID,
 			})
 		}
-	}
-
-	// Siempre ejecutar hooks complete
-	hookCtx.HookType = OnComplete
-	if hookErr := wm.hookManager.ExecuteHooks(ctx, OnComplete, hookCtx); hookErr != nil {
-		wm.logger.Log(WARN, "complete hooks failed", map[string]interface{}{
-			"error":   hookErr.Error(),
-			"node_id": startNode.GetID(),
-		})
-	}
-
-	// Ejecutar hooks after execution
-	hookCtx.HookType = AfterExecution
-	if hookErr := wm.hookManager.ExecuteHooks(ctx, AfterExecution, hookCtx); hookErr != nil {
-		wm.logger.Log(WARN, "after execution hooks failed", map[string]interface{}{
-			"error":   hookErr.Error(),
-			"node_id": startNode.GetID(),
-		})
 	}
 
 	executionResult := &ExecutionResult{
@@ -180,11 +163,58 @@ func (wm *WorkflowManager) ExecuteWithContext(ctx context.Context, startNodeID s
 		Duration:  duration.Milliseconds(),
 		Success:   success,
 		Error:     err,
-		NodeID:    startNode.GetID(),
+		NodeID:    finalNodeID,
 		Timestamp: startTime.Unix(),
 	}
 
 	return executionResult, err
+}
+
+// executeNodeChain ejecuta una cadena completa de nodos siguiendo los edges
+func (wm *WorkflowManager) executeNodeChain(ctx context.Context, startNode NodeInterface, initialData interface{}) (interface{}, string, error) {
+	currentNode := startNode
+	currentData := initialData
+	finalNodeID := startNode.GetID()
+
+	for currentNode != nil {
+		// Verificar cancelación de contexto
+		select {
+		case <-ctx.Done():
+			return nil, finalNodeID, ctx.Err()
+		default:
+		}
+
+		// Ejecutar el nodo actual
+		result, err := wm.ExecuteNodeWithContext(ctx, currentNode, currentData)
+		if err != nil {
+			return nil, currentNode.GetID(), err
+		}
+
+		// Actualizar datos para el siguiente nodo
+		currentData = result
+		finalNodeID = currentNode.GetID()
+
+		// Buscar el siguiente nodo usando los edges
+		nextNode := wm.findNextNode(currentNode)
+		if nextNode == nil {
+			// No hay más nodos, terminar la cadena exitosamente
+			break
+		}
+
+		currentNode = nextNode
+	}
+
+	return currentData, finalNodeID, nil
+}
+
+// findNextNode encuentra el siguiente nodo basado en los edges del grafo
+func (wm *WorkflowManager) findNextNode(currentNode NodeInterface) NodeInterface {
+	for _, edge := range wm.graph.Edges {
+		if edge.From != nil && edge.From.GetID() == currentNode.GetID() {
+			return edge.To
+		}
+	}
+	return nil
 }
 
 // ExecuteNodeWithContext ejecuta un nodo específico con contexto
@@ -387,6 +417,19 @@ func (wm *WorkflowManager) BuildFromConfig(cfg *config.WorkflowConfig) error {
 				}
 				wm.graph.Edges = append(wm.graph.Edges, edge)
 			}
+		}
+	}
+
+	// Crear edges desde el array Edges de la configuración (para modo programático)
+	for _, edgeCfg := range cfg.Edges {
+		fromNode := wm.findNodeByID(edgeCfg.From)
+		toNode := wm.findNodeByID(edgeCfg.To)
+		if fromNode != nil && toNode != nil {
+			edge := &Edge{
+				From: fromNode,
+				To:   toNode,
+			}
+			wm.graph.Edges = append(wm.graph.Edges, edge)
 		}
 	}
 
